@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="AspNetCore.HealthChecks.Rabbitmq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartBank.Customer.Application\SmartBank.Customer.Application.csproj" />
+    <ProjectReference Include="..\SmartBank.Customer.Infrastructure\SmartBank.Customer.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Domain\SmartBank.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Application\SmartBank.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Infrastructure\SmartBank.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.EventBus\SmartBank.BuildingBlocks.EventBus.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Web\SmartBank.BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\Contracts\SmartBank.Contracts.Grpc\SmartBank.Contracts.Grpc.csproj" />
+  </ItemGroup>
+
+</Project>

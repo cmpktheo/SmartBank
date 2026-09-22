@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartBank.Ledger.Application\SmartBank.Ledger.Application.csproj" />
+    <ProjectReference Include="..\SmartBank.Ledger.Domain\SmartBank.Ledger.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.EventBus\SmartBank.BuildingBlocks.EventBus.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Infrastructure\SmartBank.BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

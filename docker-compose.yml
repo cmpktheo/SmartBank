@@ -1,0 +1,177 @@
+
+services:
+  postgres-identity:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: smartbank
+      POSTGRES_PASSWORD: smartbank_dev_only
+      POSTGRES_DB: smartbank_identity
+    ports: ["5433:5432"]
+    volumes: [pg-identity:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbank -d smartbank_identity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-customer:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: smartbank
+      POSTGRES_PASSWORD: smartbank_dev_only
+      POSTGRES_DB: smartbank_customer
+    ports: ["5434:5432"]
+    volumes: [pg-customer:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbank -d smartbank_customer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-ledger:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: smartbank
+      POSTGRES_PASSWORD: smartbank_dev_only
+      POSTGRES_DB: smartbank_ledger
+    ports: ["5435:5432"]
+    volumes: [pg-ledger:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbank -d smartbank_ledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-cards:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: smartbank
+      POSTGRES_PASSWORD: smartbank_dev_only
+      POSTGRES_DB: smartbank_cards
+    ports: ["5436:5432"]
+    volumes: [pg-cards:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbank -d smartbank_cards"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-notification:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: smartbank
+      POSTGRES_PASSWORD: smartbank_dev_only
+      POSTGRES_DB: smartbank_notification
+    ports: ["5437:5432"]
+    volumes: [pg-notification:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbank -d smartbank_notification"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--requirepass", "smartbank_dev_only"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "smartbank_dev_only", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: smartbank
+      RABBITMQ_DEFAULT_PASS: smartbank_dev_only
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.122.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports: ["4317:4317", "4318:4318", "8889:8889", "13133:13133"]
+    depends_on:
+      - loki
+      - tempo
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "--version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-data:/prometheus
+    ports: ["9090:9090"]
+    depends_on:
+      - otel-collector
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    ports: ["3100:3100"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tempo:
+    image: grafana/tempo:2.7.2
+    command: ["-config.file=/etc/tempo/tempo-config.yaml"]
+    volumes:
+      - ./observability/tempo-config.yaml:/etc/tempo/tempo-config.yaml:ro
+      - tempo-data:/var/tempo
+    ports: ["3200:3200"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: smartbank_dev_only
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3000/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/opt/smartbank-dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["3000:3000"]
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+volumes:
+  pg-identity:
+  pg-customer:
+  pg-ledger:
+  pg-cards:
+  pg-notification:
+  prom-data:
+  loki-data:
+  tempo-data:
+  grafana-data:

@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartBank.BuildingBlocks.Domain\SmartBank.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\SmartBank.BuildingBlocks.Application\SmartBank.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\SmartBank.BuildingBlocks.EventBus\SmartBank.BuildingBlocks.EventBus.csproj" />
+  </ItemGroup>
+
+</Project>

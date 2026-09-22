@@ -1,0 +1,59 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.Application.Tests/SmartBank.BuildingBlocks.Application.Tests.csproj" />
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.Application/SmartBank.BuildingBlocks.Application.csproj" />
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.Domain.Tests/SmartBank.BuildingBlocks.Domain.Tests.csproj" />
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.Domain/SmartBank.BuildingBlocks.Domain.csproj" />
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.EventBus/SmartBank.BuildingBlocks.EventBus.csproj" />
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.Infrastructure/SmartBank.BuildingBlocks.Infrastructure.csproj" />
+    <Project Path="src/BuildingBlocks/SmartBank.BuildingBlocks.Web/SmartBank.BuildingBlocks.Web.csproj" />
+  </Folder>
+  <Folder Name="/src/Contracts/">
+    <Project Path="src/Contracts/SmartBank.Contracts.Grpc/SmartBank.Contracts.Grpc.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateways/">
+    <Project Path="src/Gateways/SmartBank.ApiGateway/SmartBank.ApiGateway.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Cards/">
+    <Project Path="src/Services/Cards/SmartBank.Cards.Api/SmartBank.Cards.Api.csproj" />
+    <Project Path="src/Services/Cards/SmartBank.Cards.Application/SmartBank.Cards.Application.csproj" />
+    <Project Path="src/Services/Cards/SmartBank.Cards.Domain.Tests/SmartBank.Cards.Domain.Tests.csproj" />
+    <Project Path="src/Services/Cards/SmartBank.Cards.Domain/SmartBank.Cards.Domain.csproj" />
+    <Project Path="src/Services/Cards/SmartBank.Cards.Infrastructure/SmartBank.Cards.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Customer/">
+    <Project Path="src/Services/Customer/SmartBank.Customer.Api/SmartBank.Customer.Api.csproj" />
+    <Project Path="src/Services/Customer/SmartBank.Customer.Application.Tests/SmartBank.Customer.Application.Tests.csproj" />
+    <Project Path="src/Services/Customer/SmartBank.Customer.Application/SmartBank.Customer.Application.csproj" />
+    <Project Path="src/Services/Customer/SmartBank.Customer.Domain.Tests/SmartBank.Customer.Domain.Tests.csproj" />
+    <Project Path="src/Services/Customer/SmartBank.Customer.Domain/SmartBank.Customer.Domain.csproj" />
+    <Project Path="src/Services/Customer/SmartBank.Customer.Infrastructure/SmartBank.Customer.Infrastructure.csproj" />
+    <Project Path="src/Services/Customer/SmartBank.Customer.Integration.Tests/SmartBank.Customer.Integration.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Identity/">
+    <Project Path="src/Services/Identity/SmartBank.Identity.Api/SmartBank.Identity.Api.csproj" />
+    <Project Path="src/Services/Identity/SmartBank.Identity.Application.Tests/SmartBank.Identity.Application.Tests.csproj" />
+    <Project Path="src/Services/Identity/SmartBank.Identity.Application/SmartBank.Identity.Application.csproj" />
+    <Project Path="src/Services/Identity/SmartBank.Identity.Domain.Tests/SmartBank.Identity.Domain.Tests.csproj" />
+    <Project Path="src/Services/Identity/SmartBank.Identity.Domain/SmartBank.Identity.Domain.csproj" />
+    <Project Path="src/Services/Identity/SmartBank.Identity.Infrastructure/SmartBank.Identity.Infrastructure.csproj" />
+    <Project Path="src/Services/Identity/SmartBank.Identity.Integration.Tests/SmartBank.Identity.Integration.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Ledger/">
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Api/SmartBank.Ledger.Api.csproj" />
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Application.Tests/SmartBank.Ledger.Application.Tests.csproj" />
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Application/SmartBank.Ledger.Application.csproj" />
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Domain.Tests/SmartBank.Ledger.Domain.Tests.csproj" />
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Domain/SmartBank.Ledger.Domain.csproj" />
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Infrastructure/SmartBank.Ledger.Infrastructure.csproj" />
+    <Project Path="src/Services/Ledger/SmartBank.Ledger.Integration.Tests/SmartBank.Ledger.Integration.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Notification/">
+    <Project Path="src/Services/Notification/SmartBank.Notification.Api/SmartBank.Notification.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartBank.Testing.Common/SmartBank.Testing.Common.csproj" />
+  </Folder>
+</Solution>

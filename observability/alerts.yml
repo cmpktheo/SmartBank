@@ -1,0 +1,32 @@
+groups:
+  - name: smartbank-slo
+    interval: 30s
+    rules:
+      - alert: SmartBankHigh5xxRate
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+          /
+          sum(rate(http_server_request_duration_seconds_count[5m])) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx rate on SmartBank APIs"
+      - alert: SmartBankHighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le, http_route))
+          > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency > 500ms"
+      - alert: SmartBankTransferFailures
+        expr: |
+          sum(rate(smartbank_ledger_transfers_failed_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated transfer failure rate"

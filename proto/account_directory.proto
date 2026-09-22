@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+option csharp_namespace = "SmartBank.Contracts.Grpc";
+
+package smartbank.customer.v1;
+
+service AccountDirectory {
+  rpc GetAccountStatus (GetAccountStatusRequest) returns (AccountStatusReply);
+  rpc LookupByIban (LookupByIbanRequest) returns (LookupByIbanReply);
+  rpc ReserveFunds (ReserveFundsRequest) returns (ReserveFundsReply);
+  rpc ReleaseFunds (ReleaseFundsRequest) returns (ReleaseFundsReply);
+  rpc CommitFunds (CommitFundsRequest) returns (CommitFundsReply);
+  rpc CreditFunds (CreditFundsRequest) returns (CreditFundsReply);
+}
+
+message GetAccountStatusRequest {
+  string account_id = 1; // uuid
+}
+
+message AccountStatusReply {
+  bool found = 1;
+  string account_id = 2;
+  string customer_id = 3;
+  string iban = 4;
+  string currency = 5;
+  string status = 6;            // Active | Frozen | Closed
+  string available_balance = 7; // "2500.00"
+  string posted_balance = 8;
+  string overdraft_limit = 9;
+  string customer_email = 10;
+  string alias = 11;
+}
+
+message LookupByIbanRequest {
+  string iban = 1; // compact or formatted
+}
+
+message LookupByIbanReply {
+  bool found = 1;
+  string account_id = 2;
+  string customer_id = 3;
+  string status = 4;
+  string currency = 5;
+  string holder_name_masked = 6; // "A**** M****"
+  string customer_email = 7;
+  string iban = 8;
+}
+
+message ReserveFundsRequest {
+  string account_id = 1;
+  string hold_id = 2;          // MUST equal transaction_id
+  string transaction_id = 3;
+  string amount = 4;           // "100.00"
+  string currency = 5;
+  int32 ttl_seconds = 6;       // 30
+}
+
+message ReserveFundsReply {
+  bool ok = 1;
+  string error_code = 2;       // empty if ok
+  string error_message = 3;
+  string available_balance = 4;
+}
+
+message ReleaseFundsRequest {
+  string account_id = 1;
+  string hold_id = 2;
+}
+
+message ReleaseFundsReply {
+  bool ok = 1;
+  string error_code = 2;
+}
+
+message CommitFundsRequest {
+  string account_id = 1;
+  string hold_id = 2; // == transaction_id
+}
+
+message CommitFundsReply {
+  bool ok = 1;
+  string error_code = 2;
+  string error_message = 3;
+}
+
+message CreditFundsRequest {
+  string account_id = 1;
+  string transaction_id = 2;
+  string amount = 3; // "100.00"
+  string currency = 4;
+}
+
+message CreditFundsReply {
+  bool ok = 1;
+  string error_code = 2;
+  string error_message = 3;
+}
