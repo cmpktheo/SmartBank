@@ -1,0 +1,122 @@
+<section class="card card-pad">
+  <div role="tablist" aria-label="Transfer type" class="sb-tablist">
+    @for (t of transferTypes; track t) {
+      <button
+        [attr.data-testid]="'transfer-type-' + t.toLowerCase()"
+        (click)="transferTypeChange.emit(t)"
+        class="sb-tab-btn"
+        [class.is-active]="transferType() === t"
+      >
+        {{ t }}
+      </button>
+    }
+  </div>
+
+  <div class="sb-form-row">
+    <div>
+      <label class="sb-label" id="t-src-label">Source account</label>
+      <sb-combo-box
+        [options]="sourceOptions()"
+        [value]="selectedSourceId()"
+        (valueChange)="selectedSourceIdChange.emit($event)"
+        [heading]="'Source account · ' + accounts().length"
+        [footer]="'Settles instantly · no fee'"
+        ariaLabel="Source account"
+        buttonTestid="transfer-source-select"
+        optionTestidPrefix="transfer-source-option-"
+      />
+      <!-- Hidden native select keeps form/AT semantics in sync -->
+      <select
+        class="sr-only"
+        tabindex="-1"
+        aria-hidden="true"
+        aria-labelledby="t-src-label"
+        [ngModel]="selectedSourceId()"
+        (ngModelChange)="selectedSourceIdChange.emit($event)"
+      >
+        @for (a of accounts(); track a.id) {
+          <option [value]="a.id">{{ a.alias }} ({{ a.availableBalance }} {{ a.currency }})</option>
+        }
+      </select>
+    </div>
+
+    <div>
+      <label class="sb-label" for="t-iban">Destination IBAN</label>
+      <input
+        id="t-iban"
+        data-testid="transfer-iban-input"
+        class="field mono"
+        [ngModel]="iban()"
+        (ngModelChange)="ibanChange.emit($event)"
+        placeholder="CH93…"
+        autocomplete="off"
+      />
+      @if (ibanStatus() === 'verified') {
+        <div data-testid="iban-verified-badge" class="sb-alert sb-alert-ok mt-2">
+          <svg lucideCheck class="size-3.5" /> Beneficiary verified — {{ holderName() }}
+        </div>
+      }
+      @if (ibanStatus() === 'invalid') {
+        <div data-testid="iban-invalid-msg" class="sb-alert sb-alert-error mt-2">
+          IBAN checksum is invalid.
+        </div>
+      }
+      @if (ibanStatus() === 'unverified') {
+        <div class="muted text-[12px] mt-2">
+          IBAN format is valid but the holder could not be verified — transfer may be rejected.
+        </div>
+      }
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="sb-label" for="t-amt">Amount ({{ sourceCurrency() }})</label>
+        <div class="input-with-prefix">
+          <span>$</span>
+          <input
+            id="t-amt"
+            data-testid="transfer-amount-input"
+            class="field tnum"
+            [ngModel]="amount()"
+            (ngModelChange)="amountChange.emit($event)"
+            inputmode="decimal"
+            placeholder="1,000.00"
+          />
+        </div>
+      </div>
+      <div>
+        <label class="sb-label" for="t-nar">Reference <span class="muted">(optional)</span></label>
+        <input
+          id="t-nar"
+          data-testid="transfer-narrative-input"
+          class="field"
+          [ngModel]="narrative()"
+          (ngModelChange)="narrativeChange.emit($event)"
+          maxlength="140"
+          placeholder="Invoice #4922"
+        />
+      </div>
+    </div>
+
+    @if (insufficient()) {
+      <div data-testid="transfer-insufficient-msg" class="sb-alert sb-alert-error" role="alert">
+        Insufficient funds in {{ sourceAlias() }}.
+      </div>
+    }
+    @if (transferType() !== 'Internal') {
+      <div class="sb-alert sb-alert-error">
+        Note: the Ledger API only settles <strong>Internal</strong> IBANs.
+        {{ transferType() }} transfers to unknown IBANs will be rejected.
+      </div>
+    }
+
+    <button
+      data-testid="transfer-submit-btn"
+      class="btn-primary w-full p-3"
+      [disabled]="submitDisabled()"
+      (click)="review.emit()"
+    >
+      Review transfer
+    </button>
+  </div>
+</section>

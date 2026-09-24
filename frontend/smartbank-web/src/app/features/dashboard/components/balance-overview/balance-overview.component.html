@@ -1,0 +1,39 @@
+<section class="card card-pad" aria-label="Account balances">
+  <div class="card-head">
+    <div class="flex items-center gap-3">
+      <div class="sb-brand-mark" aria-hidden="true"><svg lucideWallet class="size-5" /></div>
+      <div>
+        <h2 class="text-[15px] text-white">Total balances</h2>
+        <p class="muted text-[11.5px]">Per-currency totals · no conversion applied</p>
+      </div>
+    </div>
+    <span class="pill pill-blue"><span class="dot dot-blue"></span>{{ accounts().length }} accounts</span>
+  </div>
+  @if (loading()) {
+    <p class="muted text-[13px]">Loading accounts…</p>
+  } @else if (accounts().length === 0) {
+    <p class="muted text-[13px]">No accounts yet. Open one to get started.</p>
+  } @else {
+    <div class="flex flex-wrap gap-3 mb-4">
+      @for (g of totals(); track g.currency) {
+        <div class="stat-mini min-w-[180px] flex-1">
+          <span>Total in {{ g.currency }}</span>
+          <strong class="tnum stat-total">{{ +g.total | currency: g.currency }}</strong>
+        </div>
+      }
+    </div>
+    <div class="grid-3">
+      @for (acc of accounts(); track acc.id) {
+        <sb-account-card [account]="acc" (open)="openAccount.emit($event)" />
+      }
+    </div>
+  }
+  <div class="divider flex gap-2.5 flex-wrap">
+    <a data-testid="quick-transfer-btn" routerLink="/transfers" class="btn-primary flex-1 min-w-[160px]">
+      <svg lucideArrowUpRight class="size-4" /> Transfer funds
+    </a>
+    <a data-testid="quick-cards-btn" routerLink="/cards" class="btn-secondary flex-1 min-w-[160px]">
+      <svg lucideCreditCard class="size-4" /> Manage cards
+    </a>
+  </div>
+</section>

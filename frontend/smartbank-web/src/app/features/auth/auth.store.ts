@@ -73,9 +73,10 @@ export class AuthStore {
       const res = await firstValueFrom(
         this.http.post<{ expiresInSeconds: number }>(`${environment.apiBaseUrl}/api/auth/mfa/resend`, {
           challengeId: this.mfaChallengeId(),
+          email: this.email(),
         })
       );
-      const expiresIn = res?.expiresInSeconds ?? 300;
+      const expiresIn = res?.expiresInSeconds ?? 60;
       this.mfaExpiresAt.set(Date.now() + expiresIn * 1000);
       // Old demo code is now invalid — force a fresh fetch instead of showing a stale OTP.
       this.otpCode.set(null);

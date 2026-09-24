@@ -1,0 +1,53 @@
+<div class="sb-auth-wrap">
+  <div class="sb-auth-card card card-pad tab-pane">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="sb-brand-mark" aria-hidden="true">S</div>
+      <div>
+        <div class="text-[17px] font-bold font-display">SMART<span class="text-[#60a5fa]">BANK</span></div>
+        <div class="micro-label text-[10px]">Enterprise Portal</div>
+      </div>
+    </div>
+    <h1 class="text-[20px] text-white">Sign in</h1>
+    <p class="muted text-[12.5px] my-1 mb-5">Password first — we'll send a 6-digit code next.</p>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="sb-form-row">
+      <div>
+        <label class="sb-label" for="email">Email</label>
+        <input
+          id="email"
+          data-testid="login-email-input"
+          type="email"
+          autocomplete="username"
+          formControlName="email"
+          class="field"
+          placeholder="you@smartbank.test"
+        />
+      </div>
+      <div>
+        <label class="sb-label" for="password">Password</label>
+        <input
+          id="password"
+          data-testid="login-password-input"
+          type="password"
+          autocomplete="current-password"
+          formControlName="password"
+          class="field"
+          placeholder="••••••••"
+        />
+      </div>
+      <button
+        data-testid="login-submit-btn"
+        type="submit"
+        class="btn-primary w-full p-3"
+        [disabled]="form.invalid || loading()"
+      >
+        {{ loading() ? 'Signing in…' : 'Sign in' }}
+      </button>
+      @if (error()) {
+        <div data-testid="login-error" role="alert" class="sb-alert sb-alert-error">
+          {{ error() }}
+        </div>
+      }
+    </form>
+    <p class="muted text-[11px] text-center mt-4">Protected by 256-bit TLS · SOC 2 Type II</p>
+  </div>
+</div>

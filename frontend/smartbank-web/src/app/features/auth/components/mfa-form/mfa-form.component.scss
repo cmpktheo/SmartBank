@@ -1,0 +1,38 @@
+// MfaForm owns this markup, so the MFA styles live here
+// (moved from mfa.page.scss — component styles only apply to their own template).
+.sb-auth-center {
+  text-align: center;
+}
+
+.sb-brand-mark-center {
+  margin: 0 auto 16px;
+}
+
+.sb-demo-fetch {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sb-sms-head {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb-copy-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(110, 231, 183, 0.1);
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  color: #6ee7b7;
+}

@@ -1,0 +1,108 @@
+<button
+  data-testid="card-back-btn"
+  class="btn-secondary self-start text-[12.5px] px-3 py-[7px]"
+  (click)="back.emit()"
+>
+  <svg lucideArrowLeft class="size-3.5 align-[-2px]" /> All cards
+</button>
+<div class="card card-pad sb-medium" data-testid="card-detail">
+  <div class="bank-card mx-auto mb-4" data-testid="card-visual">
+    <div class="row-between">
+      <span class="font-bold tracking-[0.06em] text-[13px] font-display">SMARTBANK</span>
+      <span class="flex items-center gap-2.5"
+        ><img
+          src="assets/cards/contactless.svg"
+          alt=""
+          aria-hidden="true"
+          width="22"
+          height="22"
+          class="block opacity-90"
+        />
+        @if (isVisa(card())) {
+          <img
+            data-testid="card-brand-visa"
+            src="assets/cards/visa.svg"
+            alt="Visa"
+            title="Visa"
+            width="42"
+            height="26"
+            class="block rounded"
+          />
+        } @else if (isMastercard(card())) {
+          <img
+            data-testid="card-brand-mastercard"
+            src="assets/cards/mastercard.svg"
+            alt="Mastercard"
+            title="Mastercard"
+            width="42"
+            height="26"
+            class="block rounded"
+          />
+        }
+      </span>
+    </div>
+    <div data-testid="card-masked-pan" class="mono tnum text-[19px] tracking-[0.1em]">
+      {{ card().maskedPan }}
+    </div>
+    <div class="row-between text-[12px]">
+      <div>
+        <span class="muted text-[9px] block tracking-[0.15em]">ACCOUNT</span
+        ><span class="mono text-[11px]">{{ card().accountId.slice(0, 8) }}…</span>
+      </div>
+      <div class="text-right">
+        <span class="muted text-[9px] block tracking-[0.15em]">EXPIRES</span>
+        <span data-testid="card-expiry" class="mono tnum"
+          >{{ card().expiryMonth }}/{{ card().expiryYear % 100 }}</span
+        >
+      </div>
+      <div class="text-right">
+        <span class="muted text-[9px] block tracking-[0.15em]">CVV</span>
+        <span data-testid="card-cvv-value" class="mono">{{ cvv() ?? '•••' }}</span>
+      </div>
+    </div>
+    @if (card().status === 'Frozen') {
+      <div class="bank-card-frozen">
+        <svg lucideSnowflake class="size-3.5 align-[-2px]" /> FROZEN
+      </div>
+    }
+  </div>
+
+  <div class="row-between mb-3">
+    <span
+      data-testid="card-status"
+      class="pill"
+      [class.pill-green]="card().status === 'Active'"
+      [class.pill-amber]="card().status === 'Frozen'"
+      >{{ card().status }}</span
+    >
+    <button
+      data-testid="card-cvv-toggle"
+      class="btn-secondary text-[12px] px-3 py-1.5"
+      (click)="reveal.emit(card().id)"
+    >
+      Show CVV
+    </button>
+  </div>
+  <label class="sb-card-toggle">
+    {{ card().status === 'Frozen' ? 'Unfreeze card' : 'Freeze card' }}
+    <input
+      data-testid="card-freeze-toggle"
+      type="checkbox"
+      [checked]="card().status === 'Frozen'"
+      (change)="toggleFreeze.emit(card())"
+      class="size-4 accent-[#2563eb]"
+    />
+  </label>
+
+  <sb-card-limits-editor
+    [card]="card()"
+    [ecom]="ecom()"
+    [atm]="atm()"
+    [saving]="saving()"
+    [dirty]="dirty()"
+    [saveError]="saveError()"
+    (ecomChange)="ecomChange.emit($event)"
+    (atmChange)="atmChange.emit($event)"
+    (save)="saveLimits.emit()"
+  />
+</div>

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #05080f;
+  --color-surface: #0b1220;
+  --color-surface2: #0e1628;
+  --color-line: #1a2440;
+  --color-muted: #8b94a7;
+  --color-fg: #e6ebf4;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-emerald-soft: #34d399;
+  --color-amber-soft: #fbbf24;
+  --color-red-soft: #f87171;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Outfit", "Inter", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

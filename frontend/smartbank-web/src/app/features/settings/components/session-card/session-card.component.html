@@ -1,0 +1,37 @@
+<section class="card card-pad">
+  <h3 class="sb-section-title mb-3">Session &amp; security</h3>
+  <div class="text-[13px] flex flex-col">
+    <div class="row-between sb-setting-row">
+      <div>
+        <strong class="text-white">Signed in as</strong>
+        <p class="muted text-[12px]">{{ email() }}</p>
+      </div>
+      <span class="pill pill-green"><span class="dot dot-green"></span>Verified</span>
+    </div>
+    <div class="row-between sb-setting-row">
+      <div>
+        <strong class="text-white">Customer ID</strong>
+        <p class="mono muted text-[12px]">{{ customerId() }}</p>
+      </div>
+    </div>
+    <div class="row-between sb-setting-row">
+      <div>
+        <strong class="text-white">Session expires</strong>
+        <p class="muted tnum text-[12px]">{{ expiresText() }}</p>
+      </div>
+      <span class="pill pill-blue">256-bit TLS</span>
+    </div>
+    <div class="row-between sb-setting-row">
+      <div>
+        <strong class="text-white">MFA</strong>
+        <p class="muted text-[12px]">Required at every login (email code)</p>
+      </div>
+      <span class="pill pill-green">Enforced</span>
+    </div>
+  </div>
+  <div class="divider">
+    <button data-testid="nav-logout" class="btn-secondary w-full" (click)="signOut.emit()">
+      Sign out
+    </button>
+  </div>
+</section>

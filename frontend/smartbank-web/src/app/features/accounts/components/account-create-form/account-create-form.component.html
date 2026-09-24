@@ -1,0 +1,76 @@
+<form class="card card-pad flex gap-3 flex-wrap items-end" (ngSubmit)="submit()">
+  <div class="flex-1 min-w-[160px]">
+    <label class="sb-label" for="new-alias">Alias</label>
+    <input
+      id="new-alias"
+      data-testid="account-new-alias"
+      class="field"
+      [(ngModel)]="alias"
+      name="alias"
+      required
+      placeholder="e.g. Holiday fund"
+    />
+  </div>
+  <div>
+    <label class="sb-label" id="new-type-label">Type</label>
+    <sb-combo-box
+      [options]="typeOptions"
+      [value]="type()"
+      (valueChange)="type.set($event)"
+      heading="Account type"
+      ariaLabel="Account type"
+      buttonTestid="account-new-type-combo"
+      optionTestidPrefix="account-new-type-option-"
+    />
+    <select
+      id="new-type"
+      data-testid="account-new-type"
+      class="sr-only"
+      tabindex="-1"
+      aria-labelledby="new-type-label"
+      [(ngModel)]="type"
+      name="type"
+    >
+      <option>Current</option>
+      <option>Savings</option>
+    </select>
+  </div>
+  <div>
+    <label class="sb-label" id="new-cur-label">Currency</label>
+    <sb-combo-box
+      [options]="currencyOptions"
+      [value]="currency()"
+      (valueChange)="currency.set($event)"
+      heading="Currency"
+      ariaLabel="Currency"
+      buttonTestid="account-new-currency-combo"
+      optionTestidPrefix="account-new-currency-option-"
+    />
+    <select
+      id="new-cur"
+      data-testid="account-new-currency"
+      class="sr-only"
+      tabindex="-1"
+      aria-labelledby="new-cur-label"
+      [(ngModel)]="currency"
+      name="currency"
+    >
+      <option>EUR</option>
+      <option>USD</option>
+      <option>GBP</option>
+    </select>
+  </div>
+  <button
+    data-testid="account-new-submit"
+    class="btn-primary"
+    type="submit"
+    [disabled]="creating() || !alias()"
+  >
+    {{ creating() ? 'Opening…' : 'Open account' }}
+  </button>
+  @if (error()) {
+    <div data-testid="account-new-error" class="sb-alert sb-alert-error" role="alert">
+      {{ error() }}
+    </div>
+  }
+</form>

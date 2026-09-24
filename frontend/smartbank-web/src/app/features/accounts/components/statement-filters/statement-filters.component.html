@@ -1,0 +1,82 @@
+<form (ngSubmit)="apply.emit()" class="flex gap-2.5 flex-wrap mb-4">
+  <div>
+    <label class="sb-label" for="f-from">From</label>
+    <input
+      id="f-from"
+      data-testid="statement-filter-from"
+      type="date"
+      class="field"
+      [ngModel]="from()"
+      (ngModelChange)="fromChange.emit($event)"
+      name="from"
+    />
+  </div>
+  <div>
+    <label class="sb-label" for="f-to">To</label>
+    <input
+      id="f-to"
+      data-testid="statement-filter-to"
+      type="date"
+      class="field"
+      [ngModel]="to()"
+      (ngModelChange)="toChange.emit($event)"
+      name="to"
+    />
+  </div>
+  <div>
+    <label class="sb-label" id="f-type-label">Type</label>
+    <sb-combo-box
+      [options]="typeOptions()"
+      [value]="type()"
+      (valueChange)="typeChange.emit($event)"
+      heading="Status"
+      ariaLabel="Filter by status"
+      buttonTestid="statement-filter-combo"
+      optionTestidPrefix="statement-filter-option-"
+    />
+    <!-- Native select stays in sync (sr-only): keeps selectOption e2e + AT working -->
+    <select
+      id="f-type"
+      data-testid="statement-filter-type"
+      class="sr-only"
+      tabindex="-1"
+      aria-labelledby="f-type-label"
+      [ngModel]="type()"
+      (ngModelChange)="typeChange.emit($event)"
+      name="type"
+    >
+      <option>All</option>
+      <option>Debit</option>
+      <option>Credit</option>
+    </select>
+  </div>
+  <div class="self-end">
+    <button data-testid="statement-apply-btn" type="submit" class="btn-primary">Apply</button>
+  </div>
+  <div>
+    <label class="sb-label" id="f-kind-label">Kind</label>
+    <sb-combo-box
+      [options]="kindOptions()"
+      [value]="kind()"
+      (valueChange)="kindChange.emit($event)"
+      heading="Kind"
+      ariaLabel="Filter by kind"
+      buttonTestid="statement-kind-combo"
+      optionTestidPrefix="statement-kind-option-"
+    />
+    <select
+      id="f-kind"
+      data-testid="statement-kind"
+      class="sr-only"
+      tabindex="-1"
+      aria-labelledby="f-kind-label"
+      [ngModel]="kind()"
+      (ngModelChange)="kindChange.emit($event)"
+      name="kind"
+    >
+      <option>All</option>
+      <option>Transfer</option>
+      <option>CardPayment</option>
+    </select>
+  </div>
+</form>

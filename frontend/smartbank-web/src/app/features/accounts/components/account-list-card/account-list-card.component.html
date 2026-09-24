@@ -1,0 +1,38 @@
+<article
+  class="card card-pad card-hover cursor-pointer"
+  data-testid="dashboard-account-card"
+  (click)="open.emit(account().id)"
+  (keydown.enter)="open.emit(account().id)"
+  tabindex="0"
+  role="link"
+  [attr.aria-label]="'Open ' + account().alias"
+>
+  <div class="row-between mb-3">
+    <span class="micro-label text-[#93c5fd]">{{ account().type }} · {{ account().currency }}</span>
+    <span
+      class="pill"
+      [class.pill-green]="account().status === 'Active'"
+      [class.pill-amber]="account().status === 'Frozen'"
+      [class.pill-red]="account().status === 'Closed'"
+      >{{ account().status }}</span
+    >
+  </div>
+  <div data-testid="dashboard-account-alias" class="text-[14px] font-semibold text-white">
+    {{ account().alias }}
+  </div>
+  <div data-testid="dashboard-account-iban" class="mono muted text-[11.5px]">
+    {{ account().ibanFormatted }}
+  </div>
+  <p class="sb-account-balance-lg" data-testid="dashboard-account-balance">
+    {{ +account().availableBalance | currency: account().currency }}
+  </p>
+  <div class="muted text-[11.5px]">
+    Available · posted {{ +account().postedBalance | currency: account().currency }}
+  </div>
+  <div class="divider row-between muted mono text-[11.5px]">
+    <span>{{ account().ibanFormatted.slice(-4) }}</span>
+    <span class="inline-flex items-center gap-1"
+      >View statement <svg lucideArrowRight class="size-3"
+    /></span>
+  </div>
+</article>

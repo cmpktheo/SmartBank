@@ -20,19 +20,19 @@ export interface ComboOption {
   imports: [LucideWallet, LucideChevronDown, LucideCheck],
   template: `
     <div class="combo" [class.open]="open()" [attr.data-testid]="comboTestid()">
-      <button type="button" class="combo-btn" [style.width]="fullWidth() ? '100%' : null"
+      <button type="button" class="combo-btn" [class.is-full]="fullWidth()"
         [attr.data-testid]="buttonTestid()" aria-haspopup="listbox" [attr.aria-expanded]="open()"
         [attr.aria-label]="ariaLabel()" (click)="toggle($event)">
         @if (selectedOption(); as sel) {
-          <span class="combo-ico" aria-hidden="true"><svg lucideWallet style="width:14px;height:14px" /></span>
-          <span style="text-align:left;flex:1;min-width:0">
-            <span class="combo-label" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sel.label }}</span>
-            @if (sel.sub) { <span class="combo-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sel.sub }}</span> }
+          <span class="combo-ico" aria-hidden="true"><svg lucideWallet class="size-3.5" /></span>
+          <span class="combo-selected-wrap">
+            <span class="combo-label">{{ sel.label }}</span>
+            @if (sel.sub) { <span class="combo-sub">{{ sel.sub }}</span> }
           </span>
         } @else {
-          <span class="muted" style="font-size:12px">{{ placeholder() }}</span>
+          <span class="muted text-[12px]">{{ placeholder() }}</span>
         }
-        <svg lucideChevronDown style="width:14px;height:14px" />
+        <svg lucideChevronDown class="chev size-3.5" />
       </button>
       @if (open()) {
         <div class="combo-panel stretch" role="listbox" [attr.aria-label]="ariaLabel()">
@@ -43,10 +43,10 @@ export interface ComboOption {
               class="combo-option" [class.selected]="o.value === value()"
               [class.highlight]="o.value === highlightValue()"
               (click)="pick(o.value, $event)" (mouseenter)="highlightValue.set(o.value)">
-<span class="combo-ico" aria-hidden="true"><svg lucideWallet style="width:14px;height:14px" /></span>
-               <span style="min-width:0"><span class="combo-label">{{ o.label }}</span>
+<span class="combo-ico" aria-hidden="true"><svg lucideWallet class="size-3.5" /></span>
+               <span class="min-w-0"><span class="combo-label">{{ o.label }}</span>
                  @if (o.sub) { <span class="combo-sub">{{ o.sub }}</span> }</span>
-               <span class="combo-check" aria-hidden="true"><svg lucideCheck style="width:14px;height:14px" /></span>
+               <span class="combo-check" aria-hidden="true"><svg lucideCheck class="size-3.5" /></span>
             </button>
           }
           @if (footer()) { <div class="combo-foot">{{ footer() }}</div> }

@@ -55,7 +55,7 @@ public sealed class VerifyMfaCommandHandler : IRequestHandler<VerifyMfaCommand, 
             else
             {
                 var updated = JsonSerializer.Serialize(payload with { Attempts = challenge.Attempts });
-                await _mfa.SetAsync(request.ChallengeId, updated, TimeSpan.FromMinutes(5), ct);
+                await _mfa.SetAsync(request.ChallengeId, updated, TimeSpan.FromMinutes(1), ct);
             }
             return Result.Failure<TokenPair>(result.Error);
         }
@@ -80,7 +80,7 @@ public sealed class VerifyMfaCommandHandler : IRequestHandler<VerifyMfaCommand, 
     private static OtpChallenge Rehydrate(LoginCommandHandler.MfaPayload p)
     {
         // Rebuild challenge state without knowing the code: create with dummy then patch via reflection-free path.
-        var c = OtpChallenge.Create(p.UserId, "000000", p.ExpiresAt.AddMinutes(-5));
+        var c = OtpChallenge.Create(p.UserId, "000000", p.ExpiresAt.AddMinutes(-1));
         // Overwrite hash/attempts/expiry by resetting attempts through failed verifies? Instead use ResetCode path:
         // Use a test seam: directly construct via Create + reflection on private setters is avoided by re-serializing:
         // Simplest: create new challenge with same hash by using internal helper below.
@@ -98,7 +98,7 @@ internal static class OtpChallengeState
 {
     public static OtpChallenge FromState(Guid id, Guid userId, string codeHash, int attempts, DateTimeOffset expiresAt)
     {
-        var c = OtpChallenge.Create(userId, "000000", expiresAt.AddMinutes(-5));
+        var c = OtpChallenge.Create(userId, "000000", expiresAt.AddMinutes(-1));
         typeof(OtpChallenge).GetProperty(nameof(OtpChallenge.CodeHash))!.SetValue(c, codeHash);
         typeof(OtpChallenge).GetProperty(nameof(OtpChallenge.Attempts))!.SetValue(c, attempts);
         typeof(OtpChallenge).GetProperty(nameof(OtpChallenge.ExpiresAt))!.SetValue(c, expiresAt);

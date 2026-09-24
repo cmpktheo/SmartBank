@@ -1,0 +1,51 @@
+<div class="mt-3 flex flex-col gap-2.5">
+  <div>
+    <div class="row-between text-[12px] mb-1">
+      <span class="muted">E-commerce daily limit ({{ card().currency }})</span
+      ><strong class="tnum text-white">{{ ecom() }}</strong>
+    </div>
+    <input
+      data-testid="card-limit-slider"
+      type="range"
+      min="0"
+      max="10000"
+      step="50"
+      [ngModel]="ecom()"
+      (ngModelChange)="ecomChange.emit($event)"
+      class="sb-range"
+    />
+  </div>
+  <div>
+    <div class="row-between text-[12px] mb-1">
+      <span class="muted">ATM daily limit ({{ card().currency }})</span
+      ><strong class="tnum text-white">{{ atm() }}</strong>
+    </div>
+    <input
+      data-testid="card-limit-slider-atm"
+      type="range"
+      min="0"
+      max="2000"
+      step="50"
+      [ngModel]="atm()"
+      (ngModelChange)="atmChange.emit($event)"
+      class="sb-range"
+    />
+  </div>
+  <button
+    data-testid="card-limit-save-btn"
+    class="btn-primary w-full"
+    [disabled]="!dirty() || saving()"
+    (click)="save.emit()"
+  >
+    {{
+      saving()
+        ? 'Saving…'
+        : dirty()
+          ? 'Save limits (' + ecom() + ' / ' + atm() + ')'
+          : 'Saved (' + card().dailyEcommerceLimit + ' / ' + card().dailyAtmLimit + ')'
+    }}
+  </button>
+  @if (saveError()) {
+    <p data-testid="card-limit-error" class="text-[12px] text-[#f87171] m-0">{{ saveError() }}</p>
+  }
+</div>

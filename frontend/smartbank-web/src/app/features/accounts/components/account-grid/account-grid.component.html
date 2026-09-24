@@ -1,0 +1,7 @@
+<div class="grid-3">
+  @for (a of accounts(); track a.id) {
+    <sb-account-list-card [account]="a" (open)="openAccount.emit($event)" />
+  } @empty {
+    <p class="muted">No accounts yet.</p>
+  }
+</div>

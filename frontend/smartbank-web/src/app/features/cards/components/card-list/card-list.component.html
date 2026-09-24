@@ -1,0 +1,36 @@
+<div class="card sb-card-list" data-testid="card-list">
+  @for (card of cards(); track card.id) {
+    <button data-testid="card-list-item" (click)="select.emit(card.id)" class="card-hover sb-card-list-item">
+      <span aria-hidden="true" class="sb-card-chip">
+        @if (isVisa(card)) {
+          <img src="assets/cards/visa.svg" alt="" width="30" height="19" class="block rounded-sm" />
+        } @else if (isMastercard(card)) {
+          <img src="assets/cards/mastercard.svg" alt="" width="30" height="19" class="block rounded-sm" />
+        } @else {
+          <span class="text-[10px] font-bold tracking-[0.06em] text-white">CARD</span>
+        }
+      </span>
+      <span class="flex-1 min-w-0">
+        <span
+          data-testid="card-list-pan"
+          class="mono tnum block text-[14px] tracking-[0.06em] text-white whitespace-nowrap overflow-hidden text-ellipsis"
+          >{{ card.maskedPan }}</span
+        >
+        <span class="muted block text-[11.5px] mt-0.5"
+          >{{ card.status }} · Exp {{ card.expiryMonth }}/{{ card.expiryYear % 100 }}</span
+        >
+      </span>
+      <svg
+        lucideChevronRight
+        data-testid="card-list-chevron"
+        aria-hidden="true"
+        class="shrink-0 size-5 text-[#64748b]"
+      />
+    </button>
+    @if (!$last) {
+      <div class="sb-separator"></div>
+    }
+  } @empty {
+    <p class="muted p-3">No cards yet — cards are issued automatically when you open an account.</p>
+  }
+</div>

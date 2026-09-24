@@ -1,0 +1,31 @@
+<article
+  data-testid="dashboard-account-card"
+  (click)="open.emit(account().id)"
+  (keydown.enter)="open.emit(account().id)"
+  class="sb-tile card-hover cursor-pointer"
+  tabindex="0"
+  role="link"
+  [attr.aria-label]="'Open ' + account().alias"
+>
+  <div class="row-between mb-3">
+    <span class="micro-label text-[#93c5fd]">{{ account().type }} · {{ account().currency }}</span>
+    <span
+      class="pill"
+      [class.pill-green]="account().status === 'Active'"
+      [class.pill-red]="account().status !== 'Active'"
+    >
+      <span
+        class="dot"
+        [class.dot-green]="account().status === 'Active'"
+        [class.dot-red]="account().status !== 'Active'"
+      ></span
+      >{{ account().status }}
+    </span>
+  </div>
+  <div data-testid="dashboard-account-alias" class="sb-account-alias">{{ account().alias }}</div>
+  <div data-testid="dashboard-account-iban" class="mono muted sb-account-iban">{{ account().ibanFormatted }}</div>
+  <div data-testid="dashboard-account-balance" class="sb-account-balance">
+    {{ +account().availableBalance | currency: account().currency }}
+  </div>
+  <div class="muted text-[11px] mt-1">Available balance</div>
+</article>

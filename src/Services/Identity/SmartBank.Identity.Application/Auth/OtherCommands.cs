@@ -8,7 +8,7 @@ using SmartBank.Identity.Domain;
 
 namespace SmartBank.Identity.Application.Auth;
 
-public sealed record ResendMfaCommand(string ChallengeId) : ICommand<ResendMfaResult>;
+public sealed record ResendMfaCommand(string ChallengeId, string? Email) : ICommand<ResendMfaResult>;
 public sealed record ResendMfaResult(int ExpiresInSeconds);
 
 public sealed class ResendMfaCommandHandler : IRequestHandler<ResendMfaCommand, Result<ResendMfaResult>>
@@ -16,20 +16,34 @@ public sealed class ResendMfaCommandHandler : IRequestHandler<ResendMfaCommand, 
     private readonly IMfaStore _mfa;
     private readonly IOtpDelivery _otp;
     private readonly ILoginUserById _users;
+    private readonly ILoginUserLookup _usersByEmail;
     private readonly BuildingBlocks.Application.IClock _clock;
 
-    public ResendMfaCommandHandler(IMfaStore mfa, IOtpDelivery otp, ILoginUserById users, BuildingBlocks.Application.IClock clock)
+    public ResendMfaCommandHandler(IMfaStore mfa, IOtpDelivery otp, ILoginUserById users, ILoginUserLookup usersByEmail, BuildingBlocks.Application.IClock clock)
     {
         _mfa = mfa;
         _otp = otp;
         _users = users;
+        _usersByEmail = usersByEmail;
         _clock = clock;
     }
 
     public async Task<Result<ResendMfaResult>> Handle(ResendMfaCommand request, CancellationToken ct)
     {
         var raw = await _mfa.GetAsync(request.ChallengeId, ct);
-        if (raw is null)
+        Guid userId;
+        if (raw is not null)
+        {
+            userId = JsonSerializer.Deserialize<LoginCommandHandler.MfaPayload>(raw)!.UserId;
+        }
+        else if (!string.IsNullOrWhiteSpace(request.Email)
+            && await _usersByEmail.FindByEmailAsync(request.Email, ct) is { } byEmail)
+        {
+            // Challenge expired/evicted after the OTP timer ran out: re-issue a
+            // fresh code under the same challenge id so resend restarts the flow.
+            userId = byEmail.Id;
+        }
+        else
         {
             SmartBankMeters.MfaResend("expired");
             return Result.Failure<ResendMfaResult>(Error.Unauthorized("IDENTITY_MFA_EXPIRED", "Code expired."));
@@ -40,16 +54,15 @@ public sealed class ResendMfaCommandHandler : IRequestHandler<ResendMfaCommand, 
             SmartBankMeters.MfaResend("rate_limited");
             return Result.Failure<ResendMfaResult>(Error.Unauthorized("IDENTITY_MFA_RESEND_LIMIT", "Resend limit exceeded."));
         }
-        var payload = JsonSerializer.Deserialize<LoginCommandHandler.MfaPayload>(raw)!;
-        var user = await _users.FindByIdAsync(payload.UserId, ct);
+        var user = await _users.FindByIdAsync(userId, ct);
         if (user is null)
             return Result.Failure<ResendMfaResult>(Error.Unauthorized("IDENTITY_MFA_EXPIRED", "Code expired."));
         var code = OtpChallenge.GenerateCode();
-        var updated = new LoginCommandHandler.MfaPayload(payload.UserId, OtpChallenge.Hash(code, payload.UserId), 0, _clock.UtcNow.AddMinutes(5));
-        await _mfa.SetAsync(request.ChallengeId, JsonSerializer.Serialize(updated), TimeSpan.FromMinutes(5), ct);
+        var updated = new LoginCommandHandler.MfaPayload(userId, OtpChallenge.Hash(code, userId), 0, _clock.UtcNow.AddMinutes(1));
+        await _mfa.SetAsync(request.ChallengeId, JsonSerializer.Serialize(updated), TimeSpan.FromMinutes(1), ct);
         await _otp.SendAsync(user.Email, code, ct);
         SmartBankMeters.MfaResend("success");
-        return Result.Success(new ResendMfaResult(300));
+        return Result.Success(new ResendMfaResult(60));
     }
 }
 

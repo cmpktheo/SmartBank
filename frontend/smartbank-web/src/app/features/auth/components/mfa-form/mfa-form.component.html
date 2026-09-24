@@ -1,0 +1,92 @@
+<div class="sb-auth-wrap">
+  <div class="sb-auth-card card card-pad tab-pane sb-auth-center">
+    <div class="sb-brand-mark sb-brand-mark-center" aria-hidden="true">S</div>
+    <h1 class="text-[20px] text-white">One-Time Password</h1>
+    <p class="muted text-[12.5px] mt-1.5 mb-5">
+      Enter the 6-digit verification code below.<br />Boxes fill one by one — paste works too.
+    </p>
+
+    <sb-otp-input (codeChange)="codeChange.emit($event)" />
+
+    <!-- visibility (not @if) keeps the row's height so buttons below don't jump when the timer hides -->
+    <div
+      data-testid="mfa-timer"
+      class="tnum muted text-[12px] my-3.5"
+      [style.visibility]="expired() ? 'hidden' : 'visible'"
+    >
+      Code expires in {{ remaining() }}
+    </div>
+
+    <button
+      data-testid="mfa-submit-btn"
+      class="btn-primary w-full p-3"
+      [disabled]="submitDisabled()"
+      (click)="submit.emit()"
+    >
+      {{ loading() ? 'Verifying…' : 'Verify' }}
+    </button>
+    <button
+      data-testid="mfa-resend-btn"
+      class="btn-secondary w-full mt-2.5"
+      [disabled]="loading() || !canResend()"
+      (click)="resend.emit()"
+    >
+      {{ loading() ? 'Sending…' : 'Resend code' }}
+    </button>
+
+    @if (justResent()) {
+      <div data-testid="mfa-resent-msg" role="status" class="sb-alert sb-alert-ok mt-3">
+        New code sent — timer restarted. Check your phone.
+      </div>
+    }
+
+    @if (expired()) {
+      <div class="sb-alert sb-alert-error mt-3">Code expired — request a new one.</div>
+    }
+    @if (error()) {
+      <div data-testid="mfa-error" role="alert" class="sb-alert sb-alert-error mt-3">
+        {{ error() }}
+      </div>
+    }
+
+    @if (email()) {
+      <div class="sb-demo-fetch">
+        <button
+          data-testid="mfa-fetch-otp-btn"
+          class="btn-secondary px-3 py-1.5 text-[12px]"
+          (click)="fetchOtp.emit()"
+        >
+          Fetch OTP (Demo)
+        </button>
+      </div>
+    }
+
+    @if (otpCode()) {
+      <div class="sb-alert sb-alert-ok mt-3 text-left">
+        <div class="sb-sms-head">
+          <svg lucidePhone class="size-4 text-[#6ee7b7]" /> Simulated SMS
+        </div>
+        <div class="flex items-center gap-2">
+          <div data-testid="simulated-sms-otp" class="otp-display">{{ otpCode() }}</div>
+          <button
+            data-testid="mfa-copy-otp-btn"
+            class="sb-copy-btn"
+            (click)="copyOtp.emit()"
+            [attr.aria-label]="copied() ? 'Copied' : 'Copy OTP'"
+          >
+            @if (copied()) {
+              <svg lucideCheck data-testid="mfa-copy-otp-copied" class="size-4" />
+            } @else {
+              <svg lucideCopy class="size-4" />
+            }
+          </button>
+          @if (copied()) {
+            <span data-testid="mfa-copied-msg" role="status" class="text-[11px] text-[#6ee7b7]"
+              >Copied</span
+            >
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

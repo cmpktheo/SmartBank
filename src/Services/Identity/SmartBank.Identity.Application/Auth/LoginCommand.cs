@@ -81,10 +81,10 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, Result<L
         var code = OtpChallenge.GenerateCode();
         var challenge = OtpChallenge.Create(user.Id, code, _clock.UtcNow);
         var payload = System.Text.Json.JsonSerializer.Serialize(new MfaPayload(user.Id, challenge.CodeHash, challenge.Attempts, challenge.ExpiresAt));
-        await _mfa.SetAsync(challengeId, payload, TimeSpan.FromMinutes(5), ct);
+        await _mfa.SetAsync(challengeId, payload, TimeSpan.FromMinutes(1), ct);
         await _otp.SendAsync(user.Email, code, ct);
         SmartBankMeters.Login("mfa_challenged");
-        return Result.Success(new LoginResult(true, challengeId, 300, null));
+        return Result.Success(new LoginResult(true, challengeId, 60, null));
     }
 
     public sealed record MfaPayload(Guid UserId, string CodeHash, int Attempts, DateTimeOffset ExpiresAt);

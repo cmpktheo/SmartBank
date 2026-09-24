@@ -1,0 +1,66 @@
+@if (loading()) {
+  <p class="muted text-[13px]">Loading…</p>
+}
+<div class="sb-table-wrap">
+  <table class="sb-table">
+    <thead>
+      <tr>
+        <th>Reference</th>
+        <th>Date</th>
+        <th>Direction</th>
+        <th>Kind</th>
+        <th>Counterparty</th>
+        <th class="num-right">Amount</th>
+        <th class="num-right">Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (tx of items(); track tx.transactionId) {
+        <tr data-testid="statement-row">
+          <td class="text-white font-semibold">{{ tx.reference }}</td>
+          <td class="muted tnum">{{ tx.bookedAt | date: 'medium' }}</td>
+          <td>
+            <span
+              class="pill"
+              [class.pill-green]="tx.direction === 'Credit'"
+              [class.pill-blue]="tx.direction !== 'Credit'"
+              >{{ tx.direction }}</span
+            >
+          </td>
+          <td>
+            @if (tx.kind === 'CardPayment') {
+              <span class="pill pill-blue"><svg lucideCreditCard class="size-[11px]" /> Card</span>
+            } @else {
+              <span class="pill"><svg lucideArrowLeftRight class="size-[11px]" /> Transfer</span>
+            }
+          </td>
+          <td class="mono muted text-[11.5px]">{{ tx.counterpartyIban ?? '—' }}</td>
+          <td class="tnum mono num-right" [class.amount-credit]="tx.direction === 'Credit'">
+            {{ tx.direction === 'Credit' ? '+' : '−' }}{{ tx.amount }} {{ tx.currency }}
+          </td>
+          <td data-testid="statement-balance" class="tnum mono num-right">
+            {{ tx.balanceAfter }} {{ tx.currency }}
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="7" class="muted text-center p-6">No transactions match your filters.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+<p class="muted text-[11.5px] mt-3">
+  Showing {{ items().length }} of {{ total() }} transactions · PDF export is not supported by the
+  API — use CSV.
+</p>
+@if (hasMore()) {
+  <button
+    data-testid="statement-load-more-btn"
+    class="btn-secondary mt-2 text-[12px]"
+    (click)="loadMore.emit()"
+    [disabled]="loadingMore()"
+  >
+    {{ loadingMore() ? 'Loading…' : 'Load more' }}
+  </button>
+}

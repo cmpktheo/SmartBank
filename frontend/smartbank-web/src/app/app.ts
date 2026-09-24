@@ -5,7 +5,7 @@ import { AuthStore } from './features/auth/auth.store';
 import { ToastService } from './shared/ui/toast';
 import { SidebarComponent } from './shell/sidebar.component';
 import { TopbarComponent } from './shell/topbar.component';
-import { LucideAlertCircle, LucideCheck } from '@lucide/angular';
+import { ToastComponent } from './shared/ui/toast/toast.component';
 
 const TITLES: Record<string, { title: string; crumb: string }> = {
   '/dashboard': { title: 'Welcome back', crumb: 'Dashboard' },
@@ -18,37 +18,30 @@ const TITLES: Record<string, { title: string; crumb: string }> = {
 @Component({
   selector: 'sb-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent, LucideAlertCircle, LucideCheck],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, ToastComponent],
   template: `
     @if (isAuthRoute()) {
       <router-outlet />
     } @else {
       <div class="sb-app">
-        @if (sidebarOpen()) { <div class="sb-scrim" (click)="sidebarOpen.set(false)"></div> }
+        @if (sidebarOpen()) {
+          <div class="sb-scrim" (click)="sidebarOpen.set(false)"></div>
+        }
         <sb-sidebar [open]="sidebarOpen()" [remaining]="remaining()" (logout)="logout()" />
         <div class="sb-main">
-          <sb-topbar [title]="pageTitle()" [crumb]="pageCrumb()" [subtitle]="subtitle()" (menu)="sidebarOpen.set(!sidebarOpen())" />
+          <sb-topbar
+            [title]="pageTitle()"
+            [crumb]="pageCrumb()"
+            [subtitle]="subtitle()"
+            [email]="userEmail()"
+            [initials]="userInitials()"
+            (menu)="sidebarOpen.set(!sidebarOpen())"
+          />
           <main class="sb-viewport custom-scrollbar"><router-outlet /></main>
         </div>
       </div>
     }
-    @if (toast.message()) {
-      <div data-testid="toast" role="status" class="sb-toast card">
-        <div style="padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
-          <span style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-            [style.background]="toast.type() === 'error' ? 'rgba(248,113,113,.15)' : 'rgba(59,130,246,.15)'"
-            [style.color]="toast.type() === 'error' ? '#fca5a5' : '#93c5fd'">
-            @if (toast.type() === 'error') { <svg lucideAlertCircle style="width:18px;height:18px" /> }
-            @if (toast.type() === 'success') { <svg lucideCheck style="width:18px;height:18px" /> }
-          </span>
-          <div style="min-width:0">
-            <p style="font-size:12.5px;font-weight:600;color:#fff">{{ toast.title() }}</p>
-            <p style="font-size:12px;color:var(--muted);margin-top:2px">{{ toast.message() }}</p>
-          </div>
-        </div>
-        <div class="sb-toast-bar"><div></div></div>
-      </div>
-    }
+    <sb-toast [message]="toast.message()" [title]="toast.title()" [type]="toast.type()" />
   `,
 })
 export class App implements OnInit, OnDestroy {
@@ -72,9 +65,12 @@ export class App implements OnInit, OnDestroy {
   });
 
   isAuthRoute = computed(() => this.routePath().startsWith('/auth'));
+  userEmail = computed(() => this.store.email() ?? 'Customer');
+  userInitials = computed(() => (this.store.email() ?? 'C').slice(0, 2).toUpperCase());
   pageTitle = computed(() => {
     const base = TITLES[this.basePath()]?.title ?? 'SmartBank Portal';
-    if (this.basePath() === '/dashboard' && this.store.email()) return `Welcome back, ${this.store.email()!.split('@')[0]}`;
+    if (this.basePath() === '/dashboard' && this.store.email())
+      return `Welcome back, ${this.store.email()!.split('@')[0]}`;
     return base;
   });
   pageCrumb = computed(() => TITLES[this.basePath()]?.crumb ?? 'Portal');
@@ -100,8 +96,9 @@ export class App implements OnInit, OnDestroy {
   ngOnInit() {
     this.store.hydrateFromSession();
     this.routePath.set(this.router.url.split('?')[0]);
-    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e: any) => {
-      this.routePath.set((e.urlAfterRedirects ?? e.url).split('?')[0]);
+    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e: unknown) => {
+      const nav = e as { urlAfterRedirects?: string; url?: string };
+      this.routePath.set((nav.urlAfterRedirects ?? nav.url ?? '').split('?')[0]);
       this.sidebarOpen.set(false);
     });
     this.timer = setInterval(() => this.now.set(Date.now()), 1000);

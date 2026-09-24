@@ -1,0 +1,23 @@
+@if (message()) {
+  <div data-testid="toast" role="status" class="sb-toast card">
+    <div class="sb-toast-body">
+      <span
+        class="sb-toast-icon"
+        [class.is-error]="type() === 'error'"
+        [class.is-success]="type() !== 'error'"
+      >
+        @if (type() === 'error') {
+          <svg lucideAlertCircle class="size-[18px]" />
+        }
+        @if (type() === 'success') {
+          <svg lucideCheck class="size-[18px]" />
+        }
+      </span>
+      <div class="min-w-0">
+        <p class="sb-toast-title">{{ title() }}</p>
+        <p class="sb-toast-msg">{{ message() }}</p>
+      </div>
+    </div>
+    <div class="sb-toast-bar"><div></div></div>
+  </div>
+}

@@ -21,7 +21,7 @@ public sealed class OtpChallenge
     }
 
     public static OtpChallenge Create(Guid userId, string code, DateTimeOffset now)
-        => new(Guid.CreateVersion7(), userId, Hash(code, userId), now.AddMinutes(5));
+        => new(Guid.CreateVersion7(), userId, Hash(code, userId), now.AddMinutes(1));
 
     public static string GenerateCode()
     {
@@ -61,7 +61,7 @@ public sealed class OtpChallenge
     {
         CodeHash = Hash(newCode, UserId);
         Attempts = 0;
-        ExpiresAt = now.AddMinutes(5);
+        ExpiresAt = now.AddMinutes(1);
     }
 
     private static bool FixedTimeEquals(string a, string b)

@@ -70,7 +70,7 @@ public static class AuthEndpoints
 
         group.MapPost("/mfa/resend", async (ResendRequest req, IMediator mediator, HttpContext ctx) =>
         {
-            var result = await mediator.Send(new ResendMfaCommand(req.ChallengeId), ctx.RequestAborted);
+            var result = await mediator.Send(new ResendMfaCommand(req.ChallengeId, req.Email), ctx.RequestAborted);
             if (result.IsFailure)
             {
                 if (result.Error.Code == "IDENTITY_MFA_RESEND_LIMIT")
@@ -143,7 +143,7 @@ public static class AuthEndpoints
 
     public sealed record LoginRequest(string Email, string Password);
     public sealed record VerifyRequest(string ChallengeId, string Code);
-    public sealed record ResendRequest(string ChallengeId);
+    public sealed record ResendRequest(string ChallengeId, string? Email = null);
     public sealed record RefreshRequest(string RefreshToken);
     public sealed record LogoutRequest(string? RefreshToken);
 }

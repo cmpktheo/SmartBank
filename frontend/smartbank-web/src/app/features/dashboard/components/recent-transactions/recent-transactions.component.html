@@ -1,0 +1,57 @@
+<section class="card card-pad" aria-label="Recent transactions">
+  <div class="card-head">
+    <div>
+      <h2 class="sb-section-title-lg">Recent transactions</h2>
+      <p class="muted text-[12px]">Real-time ledger · {{ accountAlias() }}</p>
+    </div>
+    @if (canViewStatement()) {
+      <button
+        (click)="viewStatement.emit()"
+        class="btn-secondary text-[12px] px-3 py-2 cursor-pointer"
+      >
+        View statement (CSV)
+      </button>
+    }
+  </div>
+  @if (transactions().length === 0) {
+    <p class="muted text-[12.5px] text-center p-6">No recent activity.</p>
+  } @else {
+    <div class="sb-table-wrap">
+      <table class="sb-table">
+        <thead>
+          <tr>
+            <th>Transaction</th>
+            <th>Date</th>
+            <th class="num-right">Amount</th>
+            <th class="num-right">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (tx of transactions(); track tx.reference) {
+            <tr data-testid="recent-transaction-item">
+              <td>
+                <strong class="text-white text-[13px]">{{ tx.reference }}</strong>
+                @if (tx.kind === 'CardPayment') {
+                  <span class="pill pill-blue ml-2"><svg lucideCreditCard class="size-[11px]" /> Card</span>
+                } @else {
+                  <span class="pill ml-2"><svg lucideArrowLeftRight class="size-[11px]" /> Transfer</span>
+                }
+              </td>
+              <td class="muted tnum">{{ tx.bookedAt | date: 'medium' }}</td>
+              <td
+                class="num-right tnum mono"
+                data-testid="recent-transaction-amount"
+                [class.amount-credit]="tx.direction === 'Credit'"
+              >
+                {{ tx.direction === 'Credit' ? '+' : '−' }}{{ tx.amount }} {{ tx.currency }}
+              </td>
+              <td data-testid="recent-transaction-balance" class="tnum mono num-right">
+                {{ tx.balanceAfter }} {{ tx.currency }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
