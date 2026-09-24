@@ -1,0 +1,75 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Run — SmartBank Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Full version: <code>RUNBOOK.MD</code> at repo root.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>How to Run</b></div><h1>Run it locally</h1><p>Windows 10/11 + WSL2 + Docker Desktop (Linux containers). All commands from repo root unless noted.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Boot order</div><h2>Infra → migrate → APIs → SPA</h2>
+<pre class="code" id="boot">Copy-Item ".env.example" ".env"   # first time only
+docker compose up -d
+docker compose ps
+./scripts/migrate-seed.ps1        # builds slnx, boots APIs, waits /health/ready
+                                # to re-seed the DBs first run: docker compose down -v
+./scripts/start-apis.ps1          # identity 5101, customer 5102+6102, ledger 5103, cards 5104, notif 5105, gateway 5100
+cd frontend/smartbank-web         # new shell for the SPA
+npm ci                            # first time only
+npm start                         # serves :4200</pre>
+      <p><button class="btn btn-ghost" data-copy="#boot">Copy boot sequence</button></p>
+      <p class="small muted">Seed logins (123456): <code class="inline">alex.morgan@smartbank.test</code>, <code class="inline">jordan.lee@smartbank.test</code>. <code class="inline">start-apis.ps1</code> sets <code class="inline">E2E_OTP_SEAM=true</code> so <code class="inline">GET /api/auth/e2e/otp?email=…</code> works. Logs <code class="inline">.logs/</code>, PIDs <code class="inline">.pids/</code>, stop with <code class="inline">./scripts/stop-apis.ps1</code>.</p>
+    </div>
+    <div class="card"><div class="eyebrow">Verify &amp; test</div><h2>Health, tests, E2E</h2>
+<pre class="code">dotnet test SmartBank.slnx            # backend (stack must be up)
+cd frontend/smartbank-web; npm test   # vitest
+npx playwright install chromium; npm run e2e   # serves :4200, talks to :5100</pre>
+      <p class="small muted">Grafana <code class="inline">http://localhost:3000</code> (admin / smartbank_dev_only), RabbitMQ UI <code class="inline">:15672</code>. <code class="inline">docker compose down</code> keeps data; <code class="inline">-v</code> wipes it.</p>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="frontend.html">← Frontend</a><a class="btn btn-primary" href="index.html">Back to start →</a></div>
+    <footer class="doc-foot">SmartBank docs · distilled from RUNBOOK.MD</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

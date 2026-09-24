@@ -1,0 +1,69 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="../infra/index.html">Infra overview</a>
+      <a class="nav-link" href="../infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="../infra/redis.html">Redis</a>
+      <a class="nav-link" href="../infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="../infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Code: <code>src/Services/Customer/…</code> · gRPC <code>Grpc/AccountDirectoryService.cs</code></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Services / <b>Customer</b></div><h1>Customer <span class="pill blue">:5102 + gRPC :6102</span> <span class="pill green">Postgres</span> <span class="pill green">Redis</span> <span class="pill amber">RabbitMQ</span></h1><p>Account directory — customers, bank accounts, holds. The only gRPC server.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Functionality</div><h2>What it owns</h2>
+      <ul class="small">
+        <li>REST (<code class="inline">Endpoints/AccountEndpoints.cs</code>): <code class="inline">GET /api/accounts</code>, <code class="inline">GET /api/accounts/{id}</code>, <code class="inline">POST /api/accounts (OpenAccountCommand)</code>, <code class="inline">GET /api/accounts/iban/{iban}</code>, <code class="inline">GET /api/customers/me</code>.</li>
+        <li>gRPC <code class="inline">AccountDirectory</code> (6 RPCs: GetAccountStatus, LookupByIban, Reserve/Release/Commit/CreditFunds) over <code class="inline">CustomerDbContext</code>; reserve idempotent on <code class="inline">hold_id</code>.</li>
+        <li>Async: consumes <code class="inline">customer.ledger.transferred</code> (CaptureHold + CreditPosted); <code class="inline">HoldExpiryWorker</code> compensates Reserve-without-Book. Bank defaults GB / NWBK / 601613.</li>
+      </ul>
+      <h3>Infra it talks to</h3>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Infra</th><th>Image / port</th><th>Use</th></tr></thead><tbody>
+      <tr><td>postgres-customer</td><td>postgres:16.6-alpine · 5434</td><td><code class="inline">smartbank_customer</code></td></tr>
+      <tr><td>Redis</td><td>redis:7.4-alpine · 6379</td><td>Caching / health</td></tr>
+      <tr><td>RabbitMQ</td><td>rabbitmq:3.13-management-alpine · 5672</td><td>Publishes + consumes on <code class="inline">smartbank.ledger</code>; only service with RabbitMQ health check</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="identity.html">← Identity</a><a class="btn btn-primary" href="ledger.html">Ledger →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

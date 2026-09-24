@@ -1,0 +1,69 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notification — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="../infra/index.html">Infra overview</a>
+      <a class="nav-link" href="../infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="../infra/redis.html">Redis</a>
+      <a class="nav-link" href="../infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="../infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Code: <code>src/Services/Notification/SmartBank.Notification.Api/Program.cs</code></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Services / <b>Notification</b></div><h1>Notification <span class="pill blue">:5105</span> <span class="pill green">Postgres</span> <span class="pill amber">RabbitMQ</span> <span class="pill grey">no Redis · no JWT</span></h1><p>Async-only consumer — writes a notification log from transfer events.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Functionality</div><h2>What it owns</h2>
+      <ul class="small">
+        <li><code class="inline">MoneyTransferredConsumer</code> (raw <code class="inline">RabbitMQ.Client</code>) → <code class="inline">notification_log {eventId UNIQUE, channel, template, recipient, subject, body, payload}</code>.</li>
+        <li><code class="inline">GET /api/notifications/log?take</code> (max 100; <code class="inline">Operations</code> role outside Dev). No login/JWT middleware — not user-facing.</li>
+        <li>Auto-migrates in Dev; dedupes on <code class="inline">eventId</code> so redeliveries are safe.</li>
+      </ul>
+      <h3>Infra it talks to</h3>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Infra</th><th>Image / port</th><th>Use</th></tr></thead><tbody>
+      <tr><td>postgres-notification</td><td>postgres:16.6-alpine · 5437</td><td><code class="inline">smartbank_notification</code></td></tr>
+      <tr><td>RabbitMQ</td><td>rabbitmq:3.13-management-alpine · 5672</td><td>consumes <code class="inline">notification.ledger.transferred</code></td></tr>
+      </tbody></table></div>
+      <div class="callout info">No Redis. Only CorrelationId middleware (no JWT blacklist) — it trusts the broker, not the browser.</div>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="cards.html">← Cards</a><a class="btn btn-primary" href="../infra/index.html">Infra →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

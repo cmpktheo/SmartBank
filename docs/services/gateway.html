@@ -1,0 +1,68 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Gateway — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs · .NET 10 + Angular 20</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="../infra/index.html">Infra overview</a>
+      <a class="nav-link" href="../infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="../infra/redis.html">Redis</a>
+      <a class="nav-link" href="../infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="../infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Code: <code>src/Gateways/SmartBank.ApiGateway/Program.cs</code></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Services / <b>API Gateway</b></div><h1>API Gateway <span class="pill blue">:5100</span> <span class="pill grey">stateless</span> <span class="pill green">YARP 2.2.0</span></h1><p>Single public front door. JWT check, Redis logout-blacklist, CORS, security headers, YARP routing.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Functionality</div><h2>What it does</h2>
+      <ul class="small">
+        <li>Reverse proxy (<code class="inline">AddReverseProxy().LoadFromConfig + MapReverseProxy()</code>) — routes in <code class="inline">appsettings.Development.json → ReverseProxy</code>.</li>
+        <li>Validates JWT HS256 (authority <code class="inline">http://localhost:5101</code>, dev key <code class="inline">dev-signing-key-32-bytes-long!!!!!!</code>).</li>
+        <li><code class="inline">JwtBlacklistMiddleware</code>: rejects logged-out JTIs via Redis.</li>
+        <li>CORS allow <code class="inline">http://localhost:4200</code>; security headers; <code class="inline">/health/live|ready</code> (ready checks Redis).</li>
+      </ul>
+      <h3>Infra it talks to</h3>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Infra</th><th>Image</th><th>Use</th></tr></thead><tbody>
+      <tr><td>Redis :6379</td><td>redis:7.4-alpine</td><td>JTI blacklist only — no Postgres, no RabbitMQ</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="../communication.html">← Communication</a><a class="btn btn-primary" href="identity.html">Identity →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

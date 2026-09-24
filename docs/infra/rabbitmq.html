@@ -1,0 +1,68 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RabbitMQ — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="../services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="../services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="../services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="../services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="../services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="../services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="index.html">Infra overview</a>
+      <a class="nav-link" href="postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="redis.html">Redis</a>
+      <a class="nav-link" href="rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Image: <code>rabbitmq:3.13-management-alpine</code> · UI :15672.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Infrastructure / <b>RabbitMQ</b></div><h1>RabbitMQ <span class="pill blue">3.13-management · 5672</span></h1><p>One topic exchange. Durable per-consumer queues. Dead-letter queues.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Topology</div><h2>Exchange + queues</h2>
+      <pre class="code">Exchange: smartbank.ledger (topic, durable) · RoutingKey: ledger.transferred
+Queues: customer.ledger.transferred · notification.ledger.transferred · risk.ledger.transferred (reserved)
+Each queue → DLX *.dead · Declared by BuildingBlocks.Infrastructure/Messaging/RabbitMqSetup.cs</pre>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Role</th><th>Service</th></tr></thead><tbody>
+      <tr><td>Publisher (outbox dispatcher)</td><td>Ledger — polls <code class="inline">outbox_messages</code></td></tr>
+      <tr><td>Publisher + consumer</td><td>Customer — publishes settlement, consumes transfers</td></tr>
+      <tr><td>Consumer</td><td>Notification — <code class="inline">MoneyTransferredConsumer</code></td></tr>
+      <tr><td>Not connected</td><td>Identity, Gateway, Cards</td></tr>
+      </tbody></table></div>
+      <p class="small muted">Library: raw <code class="inline">RabbitMQ.Client 7.1.2</code> — no MassTransit. Mgmt UI <code class="inline">http://localhost:15672</code> (smartbank / smartbank_dev_only).</p>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="redis.html">← Redis</a><a class="btn btn-primary" href="observability.html">Observability →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

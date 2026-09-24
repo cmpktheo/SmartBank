@@ -1,0 +1,64 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building blocks — SmartBank Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Root: <code>src/BuildingBlocks/</code> — referenced by every service.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>Building blocks</b></div><h1>Shared building blocks</h1><p>Five libraries — the “don’t repeat yourself” layer. Services reference them, never each other.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="wrap-scroll"><table class="doc"><thead><tr><th>Project</th><th>Packages</th><th>Provides</th></tr></thead><tbody>
+    <tr><td>Domain</td><td>none (packable)</td><td><code class="inline">Entity, AggregateRoot, ValueObject, Result, Money, Currency, Iban</code></td></tr>
+    <tr><td>Application</td><td>MediatR 12.4.1, FluentValidation 11.11.0</td><td>CQRS pipeline: <code class="inline">ValidationBehavior + LoggingBehavior</code>, <code class="inline">ICurrentUser, IClock</code>, meters</td></tr>
+    <tr><td>EventBus</td><td>RabbitMQ.Client 7.1.2</td><td><code class="inline">IIntegrationEvent, MoneyTransferredIntegrationEvent, LedgerTopology</code> (exchange/queues/keys)</td></tr>
+    <tr><td>Infrastructure</td><td>EFCore 10, Npgsql 10, Redis, RabbitMQ</td><td><code class="inline">AddRabbitMqEventPublisher</code> + topology/DLX, outbox message, idempotency store, clock, cache</td></tr>
+    <tr><td>Web</td><td>JwtBearer 10, Serilog 9, OTel 1.11, Redis</td><td><code class="inline">CorrelationId / ExceptionHandling / JwtBlacklist</code> middleware, Serilog+Loki, OTel setup, <code class="inline">HttpCurrentUser</code></td></tr>
+    </tbody></table></div>
+    <p class="small muted">Tests: <code class="inline">BuildingBlocks.Domain.Tests/MoneyTests</code>, <code class="inline">Application.Tests/ValidationBehaviorTests</code>. Convention: every Api wires MediatR validators + behaviors + shared middleware the same way.</p></div>
+    <div class="pager"><a class="btn btn-ghost" href="infra/observability.html">← Observability</a><a class="btn btn-primary" href="contracts.html">Contracts →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Communication — SmartBank Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs · .NET 10 + Angular 20</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Rule of thumb: reads that need consistency → gRPC. Facts others react to → events.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>Communication</b></div><h1>How microservices communicate</h1><p>Three mechanisms — each for a different job.</p></div>
+  </div>
+  <div class="content">
+    <div class="grid-3">
+      <div class="card"><span class="pill blue"><span class="dot"></span>1 · Sync REST</span><h3 style="margin-top:10px">Browser → Gateway → service</h3><p class="small muted">JWT (HS256) validated at gateway + service. <code class="inline">JwtBlacklistMiddleware</code> checks Redis JTI on logout. <code class="inline">X-Correlation-Id</code> propagated by interceptor + middleware.</p></div>
+      <div class="card"><span class="pill green"><span class="dot"></span>2 · Sync gRPC</span><h3 style="margin-top:10px">Ledger → Customer :6102</h3><p class="small muted">Reserve / Commit / Credit / Release with 3s deadlines. Failure maps to <code class="inline">503 CUSTOMER_UNAVAILABLE</code>. Hold ID must equal transaction ID (idempotency).</p></div>
+      <div class="card"><span class="pill amber"><span class="dot"></span>3 · Async events</span><h3 style="margin-top:10px">via RabbitMQ topic</h3><p class="small muted">Exchange <code class="inline">smartbank.ledger</code>, routing key <code class="inline">ledger.transferred</code>. Customer + Notification (+ future Risk) each own a durable queue + DLX.</p></div>
+    </div>
+    <div class="card"><div class="eyebrow">Sequence · money transfer</div><h2>POST /api/transfers (idempotent)</h2>
+<pre class="mermaid">sequenceDiagram
+  participant UI as SPA
+  participant GW as Gateway :5100
+  participant LE as Ledger :5103
+  participant CU as Customer gRPC :6102
+  participant MQ as RabbitMQ
+  UI->>GW: POST /api/transfers + Idempotency-Key
+  GW->>LE: forward + JWT
+  LE->>LE: Redis idempotency check
+  LE->>CU: ReserveFunds(hold_id=txId, 3s)
+  CU-->>LE: ok + available_balance
+  LE->>LE: write journal + outbox row
+  LE->>CU: CommitFunds / CreditFunds
+  LE->>MQ: publish MoneyTransferred (outbox dispatcher)
+  MQ-->>CU: customer.ledger.transferred
+  MQ-->>NO as Notification: notification.ledger.transferred
+</pre>
+    <p class="small muted">If Customer is down: <code class="inline">503 CUSTOMER_UNAVAILABLE</code>. Retries are safe — reserve is idempotent on <code class="inline">hold_id</code> and transfers are idempotent on <code class="inline">Idempotency-Key</code> (Redis). Ledger's outbox table guarantees the event is published even if the broker was briefly down.</p></div>
+    <div class="card"><div class="eyebrow">Sequence · login + MFA</div><h2>POST /api/auth/login</h2>
+<pre class="mermaid">sequenceDiagram
+  participant UI as SPA
+  participant GW as Gateway
+  participant ID as Identity :5101
+  participant RD as Redis
+  UI->>GW: POST /api/auth/login (email+password)
+  GW->>ID: forward (anonymous route)
+  ID->>ID: verify hash (ASP.NET Identity)
+  ID->>RD: store MFA challenge + OTP
+  ID-->>UI: 200 mfaRequired + challengeId
+  UI->>ID: POST /mfa/verify (challengeId+code)
+  ID->>RD: check + delete challenge
+  ID-->>UI: access + refresh tokens (15m / 14d)
+</pre>
+    <p class="small muted">Logout writes the token JTI into Redis; gateway and services reject it afterwards. Local E2E seam: <code class="inline">GET /api/auth/e2e/otp?email=…</code> only when <code class="inline">E2E_OTP_SEAM=true</code>.</p></div>
+    <div class="card"><div class="eyebrow">Envelope</div><h2>Integration event shape</h2>
+      <pre class="code">MoneyTransferredIntegrationEvent { eventId, occurredAt, correlationId,
+  eventType: "ledger.transferred", transactionId, amount, currency }
+Exchange: smartbank.ledger (topic, durable) · Queues: customer|notification|risk.ledger.transferred + *.dead (DLX)</pre>
+      <p class="small muted">Code: <code class="inline">src/BuildingBlocks/SmartBank.BuildingBlocks.EventBus/MoneyTransferredIntegrationEvent.cs</code> + <code class="inline">LedgerTopology</code>; topology declared in <code class="inline">BuildingBlocks.Infrastructure/Messaging/RabbitMqSetup.cs</code>.</p>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="architecture.html">← Architecture</a><a class="btn btn-primary" href="services/gateway.html">Services →</a></div>
+    <footer class="doc-foot">SmartBank docs · .NET 10 / Angular 20</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+<script>window.addEventListener('load', function () {
+  if (window.mermaid) mermaid.initialize({ theme: 'dark', startOnLoad: true });
+});</script>
+</body>
+</html>

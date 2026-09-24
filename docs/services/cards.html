@@ -1,0 +1,68 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cards — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="../infra/index.html">Infra overview</a>
+      <a class="nav-link" href="../infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="../infra/redis.html">Redis</a>
+      <a class="nav-link" href="../infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="../infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Code: <code>src/Services/Cards/…</code> · PAN via <code>CARD_HMAC_KEY / CARD_AES_KEY</code></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Services / <b>Cards</b></div><h1>Cards <span class="pill blue">:5104</span> <span class="pill green">Postgres</span> <span class="pill green">Redis</span></h1><p>Card lifecycle + PAN protection. Self-contained — no gRPC, no events yet.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Functionality</div><h2>What it owns</h2>
+      <ul class="small">
+        <li><code class="inline">GET /api/cards</code>, <code class="inline">GET /api/cards/{id}</code>, <code class="inline">POST …/freeze | …/unfreeze</code> (both need <code class="inline">Idempotency-Key</code>), <code class="inline">PATCH …/limits</code>, <code class="inline">POST …/reveal-cvv</code>.</li>
+        <li>CVV reveal rate-limited in Redis (<code class="inline">sb:crd:reveal:{userId}</code>, 5 per 10 min → <code class="inline">429 CARD_REVEAL_LIMIT</code>).</li>
+        <li>PAN encrypted via <code class="inline">EnvPanProtector (CARD_HMAC_KEY, CARD_AES_KEY)</code>; MediatR <code class="inline">FreezeCardCommand</code>.</li>
+      </ul>
+      <h3>Infra it talks to</h3>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Infra</th><th>Image / port</th><th>Use</th></tr></thead><tbody>
+      <tr><td>postgres-cards</td><td>postgres:16.6-alpine · 5436</td><td><code class="inline">smartbank_cards</code></td></tr>
+      <tr><td>Redis</td><td>redis:7.4-alpine · 6379</td><td>CVV reveal counter</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="ledger.html">← Ledger</a><a class="btn btn-primary" href="notification.html">Notification →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

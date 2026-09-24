@@ -1,0 +1,66 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observability — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="../services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="../services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="../services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="../services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="../services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="../services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="index.html">Infra overview</a>
+      <a class="nav-link" href="postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="redis.html">Redis</a>
+      <a class="nav-link" href="rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Configs in <code>observability/</code>.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Infrastructure / <b>Observability</b></div><h1>Observability</h1><p>OTel → Collector → Prometheus / Tempo / Loki → Grafana. Correlation ID everywhere.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Pipeline</div><h2>Five containers</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Component</th><th>Image</th><th>Port</th><th>Job</th></tr></thead><tbody>
+      <tr><td>otel-collector</td><td>otel/opentelemetry-collector-contrib:0.122.0</td><td>4317/4318, 8889</td><td>OTLP in → Tempo (traces) + Prometheus (metrics)</td></tr>
+      <tr><td>prometheus</td><td>prom/prometheus:v3.2.1</td><td>9090</td><td>Scrapes collector + /health/ready; alerts on 5xx, p95, transfer failures</td></tr>
+      <tr><td>loki</td><td>grafana/loki:3.3.2</td><td>3100</td><td>Logs (Serilog sink, service label, correlation.id)</td></tr>
+      <tr><td>tempo</td><td>grafana/tempo:2.7.2</td><td>3200</td><td>Traces + service-graphs</td></tr>
+      <tr><td>grafana</td><td>grafana/grafana:11.5.2</td><td>3000</td><td>Pre-provisioned Prometheus/Loki/Tempo + RED dashboard</td></tr>
+      </tbody></table></div>
+      <p class="small muted">App wiring: <code class="inline">BuildingBlocks.Web/OpenTelemetryExtensions.AddSmartBankOpenTelemetry</code> + <code class="inline">SerilogExtensions.WriteToSmartBank</code>. Every request carries <code class="inline">X-Correlation-Id</code> (Angular interceptor → middleware → OTel attributes → Loki/Tempo link).</p>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="rabbitmq.html">← RabbitMQ</a><a class="btn btn-primary" href="../building-blocks.html">Building blocks →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

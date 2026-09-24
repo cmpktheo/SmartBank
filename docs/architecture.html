@@ -1,0 +1,100 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — SmartBank Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs · .NET 10 + Angular 20</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Diagrams render with Mermaid CDN. Offline? Read the fallback lists under each diagram.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>Architecture</b></div><h1>Architecture</h1><p>Container view, database-per-service, and request flow.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Container diagram</div><h2>Who calls whom</h2>
+<pre class="mermaid">flowchart LR
+  SPA["Angular SPA :4200"] -- "REST" --> GW["YARP Gateway :5100"]
+  GW -- "REST :5101" --> ID["Identity REST :5101"]
+  GW -- "REST :5102" --> CUR["Customer REST :5102"]
+  GW -- "REST :5103" --> LE["Ledger REST :5103"]
+  GW -- "REST :5104" --> CA["Cards REST :5104"]
+  LE -- "events<br/>smartbank.ledger" --> MQ["RabbitMQ 5672"]
+  LE -- "gRPC :6102<br/>AccountDirectory" --> CUG["Customer gRPC :6102"]
+  CUR -- "consumes" --> MQ
+  NO["Notification :5105"] -- "consumes" --> MQ
+  ID --> PG1[("pg-identity :5433")]
+  CUR & CUG --> PG2[("pg-customer :5434")]
+  LE --> PG3[("pg-ledger :5435")]
+  CA --> PG4[("pg-cards :5436")]
+  NO --> PG5[("pg-notification :5437")]
+  GW & ID & CUR & LE & CA --> RD[("Redis :6379")]
+  linkStyle default stroke:#93c5fd,stroke-width:2px
+</pre>
+      <div class="callout info">Fallback: SPA only talks to the gateway. Ledger is the only gRPC client. Notification never serves user traffic synchronously — it only consumes RabbitMQ. Redis is shared by everything except Notification.</div>
+    </div>
+    <div class="card"><div class="eyebrow">Data isolation</div><h2>Database per service — no sharing</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Service</th><th>Database</th><th>Port → container</th><th>Image</th></tr></thead><tbody>
+      <tr><td>Identity</td><td><code class="inline">smartbank_identity</code></td><td>5433 → 5432</td><td>postgres:16.6-alpine</td></tr>
+      <tr><td>Customer</td><td><code class="inline">smartbank_customer</code></td><td>5434 → 5432</td><td>postgres:16.6-alpine</td></tr>
+      <tr><td>Ledger</td><td><code class="inline">smartbank_ledger</code></td><td>5435 → 5432</td><td>postgres:16.6-alpine</td></tr>
+      <tr><td>Cards</td><td><code class="inline">smartbank_cards</code></td><td>5436 → 5432</td><td>postgres:16.6-alpine</td></tr>
+      <tr><td>Notification</td><td><code class="inline">smartbank_notification</code></td><td>5437 → 5432</td><td>postgres:16.6-alpine</td></tr>
+      </tbody></table></div>
+      <p class="small muted">Each API runs <code class="inline">Database.MigrateAsync()</code> on startup in Development. Cross-service reads go through gRPC or events — never direct DB access. Cards seed reuses Customer's hardcoded account GUIDs (convention, not a FK).</p>
+    </div>
+    <div class="card"><div class="eyebrow">Request path</div><h2>Gateway routing table</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Public path</th><th>Cluster</th><th>Auth</th></tr></thead><tbody>
+      <tr><td><code class="inline">/api/auth/**, /connect/**</code></td><td>identity :5101</td><td><span class="pill grey">Anonymous</span></td></tr>
+      <tr><td><code class="inline">/api/accounts/**, /api/customers/**</code></td><td>customer :5102</td><td><span class="pill blue">JWT</span></td></tr>
+      <tr><td><code class="inline">/api/transfers/**, /api/ledger/**</code></td><td>ledger :5103</td><td><span class="pill blue">JWT</span></td></tr>
+      <tr><td><code class="inline">/api/cards/**</code></td><td>cards :5104</td><td><span class="pill blue">JWT</span></td></tr>
+      </tbody></table></div>
+      <p class="small muted">Source: <code class="inline">src/Gateways/SmartBank.ApiGateway/appsettings.Development.json → ReverseProxy.Routes</code>. CORS allows <code class="inline">http://localhost:4200</code>. Every service exposes <code class="inline">/health/live</code> (always 200) and <code class="inline">/health/ready</code> (checks DB/Redis/broker).</p>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="tech-stack.html">← Tech stack</a><a class="btn btn-primary" href="communication.html">Communication →</a></div>
+    <footer class="doc-foot">SmartBank docs · .NET 10 / Angular 20</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+<script>window.addEventListener('load', function () {
+  if (window.mermaid) mermaid.initialize({ theme: 'dark', startOnLoad: true, flowchart: { htmlLabels: true } });
+});</script>
+</body>
+</html>

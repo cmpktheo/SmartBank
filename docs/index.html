@@ -1,0 +1,105 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartBank — Developer Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" defer></script>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs · .NET 10 + Angular 20</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Static site · no build step.<br>Open <code>docs/index.html</code> directly or serve with <code>npx serve docs</code>.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>Introduction</b></div><h1>SmartBank developer introduction</h1><p>What this system is, how it fits together, where to go next.</p></div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="eyebrow">Start here</div>
+      <h2>SmartBank is a microservices demo bank</h2>
+      <p class="muted">Six ASP.NET Core entry points (YARP gateway + 5 domain services), an Angular 20 SPA, five Postgres databases, Redis, RabbitMQ, and a full OpenTelemetry + Prometheus + Loki + Tempo + Grafana stack — all runnable locally with <code class="inline">docker compose up</code> + <code class="inline">scripts/start-apis.ps1</code>.</p>
+      <div class="grid-3" style="margin-top:16px">
+        <div><span class="pill blue"><span class="dot"></span>6 services</span><p class="small muted">Gateway :5100, Identity :5101, Customer :5102 (+gRPC :6102), Ledger :5103, Cards :5104, Notification :5105.</p></div>
+        <div><span class="pill green"><span class="dot"></span>DB per service</span><p class="small muted">5× <code class="inline">postgres:16.6-alpine</code> on ports 5433–5437. No shared database.</p></div>
+        <div><span class="pill amber"><span class="dot"></span>2 comm styles</span><p class="small muted">Synchronous REST via gateway + gRPC Ledger→Customer, and async RabbitMQ events.</p></div>
+      </div>
+      <p style="margin-top:16px"><a class="btn btn-primary" href="architecture.html">See the architecture →</a>
+      <a class="btn btn-ghost" href="how-to-run.html">Run it locally →</a></p>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="eyebrow">Reading order</div><h2>Suggested path</h2>
+        <ol class="small">
+          <li><a href="tech-stack.html">Tech stack</a> — versions, no guessing.</li>
+          <li><a href="architecture.html">Architecture</a> — container + DB diagrams.</li>
+          <li><a href="communication.html">Communication</a> — REST / gRPC / events.</li>
+          <li><a href="services/gateway.html">Services (×6)</a> — what each owns.</li>
+          <li><a href="infra/index.html">Infra</a> — which docker image each service touches.</li>
+          <li><a href="how-to-run.html">How to Run</a> — boot, seed, test.</li>
+        </ol>
+      </div>
+      <div class="card"><div class="eyebrow">Repo map</div><h2>Where code lives</h2>
+        <table class="doc"><thead><tr><th>Path</th><th>What</th></tr></thead><tbody>
+        <tr><td><code class="inline">src/Gateways/SmartBank.ApiGateway</code></td><td>YARP reverse proxy, JWT check, Redis JTI blacklist</td></tr>
+        <tr><td><code class="inline">src/Services/Identity|Customer|Ledger|Cards|Notification</code></td><td>One vertical slice each (Api/Application/Domain/Infrastructure)</td></tr>
+        <tr><td><code class="inline">src/BuildingBlocks/*</code></td><td>Shared DDD, CQRS, EventBus, Infra, Web libs</td></tr>
+        <tr><td><code class="inline">src/Contracts + proto/</code></td><td>gRPC <code class="inline">AccountDirectory</code> contract</td></tr>
+        <tr><td><code class="inline">frontend/smartbank-web</code></td><td>Angular 20 SPA → gateway :5100</td></tr>
+        <tr><td><code class="inline">observability/</code></td><td>OTel collector, Prometheus, Loki, Tempo, Grafana configs</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <div class="card"><div class="eyebrow">Ports cheat-sheet</div><h2>Everything listens on localhost</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Surface</th><th>Port</th><th>Notes</th></tr></thead><tbody>
+      <tr><td>Gateway</td><td><code class="inline">5100</code></td><td>Only entry point the SPA uses (<code class="inline">apiBaseUrl</code>)</td></tr>
+      <tr><td>Identity / Customer / Ledger / Cards / Notification</td><td><code class="inline">5101–5105</code></td><td>Direct access for debugging only</td></tr>
+      <tr><td>Customer gRPC</td><td><code class="inline">6102</code></td><td>HTTP/2, Ledger is the only client</td></tr>
+      <tr><td>Postgres ×5</td><td><code class="inline">5433–5437</code></td><td>identity, customer, ledger, cards, notification</td></tr>
+      <tr><td>Redis / RabbitMQ mgmt</td><td><code class="inline">6379 / 15672</code></td><td>AMQP <code class="inline">5672</code></td></tr>
+      <tr><td>Grafana / Prometheus / OTel</td><td><code class="inline">3000 / 9090 / 4317-4318</code></td><td>Loki 3100, Tempo 3200</td></tr>
+      <tr><td>SPA</td><td><code class="inline">4200</code></td><td><code class="inline">npm start</code> in <code class="inline">frontend/smartbank-web</code></td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="how-to-run.html">← How to Run</a><a class="btn btn-primary" href="tech-stack.html">Tech stack →</a></div>
+    <footer class="doc-foot">SmartBank docs · .NET 10 / Angular 20 · update when docker-compose.yml or *.csproj versions change</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+<script>window.addEventListener('load', function () {
+  if (window.mermaid) mermaid.initialize({ theme: 'dark', startOnLoad: true });
+});</script>
+</body>
+</html>

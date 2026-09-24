@@ -1,0 +1,92 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tech stack — SmartBank Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs · .NET 10 + Angular 20</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Sources: <code>Directory.Build.props</code>, <code>Directory.Packages.props</code>, <code>docker-compose.yml</code>, <code>frontend/.../package.json</code>.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>Tech stack</b></div><h1>Tech stack</h1><p>Pinned versions — check Central Package Management before upgrading.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Runtime</div><h2>Backend platform</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Layer</th><th>Choice</th><th>Evidence</th></tr></thead><tbody>
+      <tr><td>Runtime</td><td><span class="pill blue"><span class="dot"></span>.NET 10</span></td><td><code class="inline">Directory.Build.props → net10.0</code>, nullable + implicit usings, warnings-as-errors</td></tr>
+      <tr><td>Web</td><td>ASP.NET Core minimal APIs</td><td>Each <code class="inline">*.Api/Program.cs</code>; shared middleware in <code class="inline">BuildingBlocks.Web</code></td></tr>
+      <tr><td>Data</td><td>EF Core 10 + Npgsql EF 10</td><td><code class="inline">UseNpgsql</code> per service; <code class="inline">postgres:16.6-alpine</code> ×5</td></tr>
+      <tr><td>Auth</td><td>OpenIddict 7 (server) + JwtBearer 10 (HS256)</td><td>Only Identity hosts OpenIddict; gateway + services validate JWT</td></tr>
+      <tr><td>Gateway</td><td>YARP ReverseProxy 2.2.0</td><td><code class="inline">src/Gateways/SmartBank.ApiGateway</code></td></tr>
+      <tr><td>RPC</td><td>gRPC.AspNetCore 2.67 + Grpc.Net.ClientFactory + Protobuf 3.29.3</td><td><code class="inline">proto/account_directory.proto</code></td></tr>
+      <tr><td>Messaging</td><td>RabbitMQ.Client 7.1.2 (raw, no MassTransit)</td><td><code class="inline">rabbitmq:3.13-management-alpine</code></td></tr>
+      <tr><td>Cache / idempotency</td><td>StackExchange.Redis 2.8.16</td><td><code class="inline">redis:7.4-alpine</code></td></tr>
+      <tr><td>CQRS</td><td>MediatR 12.4.1 + FluentValidation 11.11.0</td><td><code class="inline">ValidationBehavior + LoggingBehavior</code></td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="eyebrow">Observability</div><h2>Logs · metrics · traces</h2>
+        <table class="doc"><tbody>
+        <tr><td>Serilog 9 + Loki sink 9.0.2</td><td>Console always; Loki when <code class="inline">LOKI_URL</code> set</td></tr>
+        <tr><td>OpenTelemetry 1.11</td><td>AspNetCore, HttpClient, EFCore, GrpcNetClient + OTLP exporter</td></tr>
+        <tr><td>Collector contrib 0.122.0</td><td>OTLP 4317/4318 → Tempo + Prometheus 8889</td></tr>
+        <tr><td>Prometheus v3.2.1 → Grafana 11.5.2</td><td>Alerts: 5xx rate, p95 latency, transfer failures</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card"><div class="eyebrow">Frontend &amp; tests</div><h2>SPA + quality gates</h2>
+        <table class="doc"><tbody>
+        <tr><td>Angular 20 / TS 5.8 / RxJS 7.8 / Tailwind 4.3</td><td><code class="inline">frontend/smartbank-web/package.json</code></td></tr>
+        <tr><td>Vitest 3 + Playwright 1.50</td><td><code class="inline">npm test</code> / <code class="inline">npm run e2e</code></td></tr>
+        <tr><td>xUnit 2.9 + FluentAssertions + NSubstitute</td><td>Domain + Application + Integration suites</td></tr>
+        <tr><td>Testcontainers 4.1 (Pg/Redis/Rabbit)</td><td>Real infra in integration tests</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <div class="card"><div class="eyebrow">Docker images</div><h2>Exact infra images</h2>
+      <pre class="code">postgres:16.6-alpine ×5  ·  redis:7.4-alpine  ·  rabbitmq:3.13-management-alpine
+otel/opentelemetry-collector-contrib:0.122.0  ·  prom/prometheus:v3.2.1
+grafana/loki:3.3.2  ·  grafana/tempo:2.7.2  ·  grafana/grafana:11.5.2</pre>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="index.html">← Introduction</a><a class="btn btn-primary" href="architecture.html">Architecture →</a></div>
+    <footer class="doc-foot">SmartBank docs · .NET 10 / Angular 20</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

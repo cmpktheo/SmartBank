@@ -1,0 +1,70 @@
+﻿?<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger — SmartBank Docs</title>
+<link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="../index.html">Introduction</a>
+      <a class="nav-link" href="../tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="../architecture.html">Architecture</a>
+      <a class="nav-link" href="../communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="../infra/index.html">Infra overview</a>
+      <a class="nav-link" href="../infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="../infra/redis.html">Redis</a>
+      <a class="nav-link" href="../infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="../infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="../building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="../contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="../frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Code: <code>src/Services/Ledger/…</code> · gRPC client <code>Grpc:Customer=http://localhost:6102</code></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / Services / <b>Ledger</b></div><h1>Ledger <span class="pill blue">:5103</span> <span class="pill green">Postgres</span> <span class="pill green">Redis</span> <span class="pill amber">RabbitMQ</span> <span class="pill green">gRPC client</span></h1><p>Money movement + double-entry journal. The most connected service.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Functionality</div><h2>What it owns</h2>
+      <ul class="small">
+        <li><code class="inline">POST /api/transfers</code> requires <code class="inline">Idempotency-Key: guid</code> → <code class="inline">TransferFundsCommand(sourceAccountId, destinationIban, amount, currency, …)</code> → <code class="inline">201 {transactionId, reference, bookedAt}</code>; Customer down → <code class="inline">503 CUSTOMER_UNAVAILABLE</code>.</li>
+        <li>Statements: <code class="inline">GET /api/ledger/accounts/{id}/transactions</code> (from/to/type/kind/page), <code class="inline">…/recent</code>, <code class="inline">…/statement.csv</code> with running balance.</li>
+        <li>gRPC client <code class="inline">AccountDirectoryClientAdapter</code> (3s deadlines); <code class="inline">RedisIdempotencyStore</code>; <code class="inline">OutboxDispatcher</code> polls <code class="inline">outbox_messages → smartbank.ledger</code>.</li>
+      </ul>
+      <h3>Infra it talks to</h3>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Infra</th><th>Image / port</th><th>Use</th></tr></thead><tbody>
+      <tr><td>postgres-ledger</td><td>postgres:16.6-alpine · 5435</td><td>journal + outbox</td></tr>
+      <tr><td>Redis</td><td>redis:7.4-alpine · 6379</td><td>transfer idempotency</td></tr>
+      <tr><td>RabbitMQ</td><td>rabbitmq:3.13-management-alpine · 5672</td><td>outbox → exchange</td></tr>
+      <tr><td>Customer gRPC</td><td>:6102 (HTTP/2)</td><td>reserve / commit / credit</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="customer.html">← Customer</a><a class="btn btn-primary" href="cards.html">Cards →</a></div>
+    <footer class="doc-foot">SmartBank docs</footer>
+  </div>
+</div>
+</div>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>
