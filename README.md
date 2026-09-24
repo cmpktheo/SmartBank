@@ -1,11 +1,11 @@
 # SmartBank — demo web banking on microservices
 
-A teaching/demo **web banking app**: register and log in (with MFA), open accounts, transfer money between accounts, browse transactions and statements, manage debit cards (freeze, limits, CVV reveal) — through an Angular SPA backed by .NET microservices.
+A demo **web banking app**: register and log in (with MFA), open accounts, transfer money between accounts, browse transactions and statements, manage debit cards (freeze, limits, CVV reveal) — through an Angular SPA backed by .NET microservices.
 
 ## Functionality
 
 - **Auth + MFA** — email/password login, OTP challenge, refresh tokens, logout with token blacklist.
-- **Accounts** — open accounts (GB IBANs), look up by IBAN, view your portfolio.
+- **Accounts** — open accounts (dummy GB IBANs), look up by IBAN, view your portfolio.
 - **Transfers + ledger** — idempotent transfers with double-entry journal, recent transactions, full statements (incl. CSV export).
 - **Cards** — list, freeze/unfreeze, daily limits, rate-limited CVV reveal, encrypted PAN storage.
 - **Notifications** — async transfer notifications via event consumer.
