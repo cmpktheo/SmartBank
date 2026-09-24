@@ -9,7 +9,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage) },
       { path: 'accounts', loadComponent: () => import('./features/accounts/accounts-list.page').then((m) => m.AccountsListPage) },
-      { path: 'accounts/:id', loadComponent: () => import('./features/accounts/account-detail.page').then((m) => m.AccountDetailPage) },
+      { path: 'accounts/detail', loadComponent: () => import('./features/accounts/account-detail.page').then((m) => m.AccountDetailPage) },
       { path: 'transfers', loadComponent: () => import('./features/transfers/transfer.page').then((m) => m.TransferPage) },
       { path: 'cards', loadComponent: () => import('./features/cards/cards.page').then((m) => m.CardsPage) },
       { path: 'settings', loadComponent: () => import('./features/settings/settings.page').then((m) => m.SettingsPage) },

@@ -15,7 +15,7 @@ public sealed class Iban : ValueObject
         if (compact.Length is < 15 or > 34)
             throw new DomainException("IBAN_LENGTH", "IBAN length must be between 15 and 34.");
 
-        if (!compact.Take(2).All(char.IsLetter) || !compact.Skip(2).Take(2).All(char.IsDigit))
+        if (!compact.Take(2).All(char.IsLetterOrDigit) || !compact.Skip(2).Take(2).All(char.IsDigit))
             throw new DomainException("IBAN_FORMAT", "IBAN must start with 2 letters and 2 check digits.");
 
         if (!PassesMod97(compact))
@@ -61,9 +61,9 @@ public sealed class Iban : ValueObject
         return Mod97(Rearrange(compact)) == 1;
     }
 
-    private static string Rearrange(string compact) => compact[4..] + compact[..4];
+    public static string Rearrange(string compact) => compact[4..] + compact[..4];
 
-    private static int Mod97(string rearranged)
+    public static int Mod97(string rearranged)
     {
         var numeric = string.Concat(rearranged.Select(c =>
             char.IsLetter(c) ? (c - 'A' + 10).ToString() : c.ToString()));

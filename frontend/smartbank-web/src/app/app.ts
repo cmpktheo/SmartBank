@@ -5,6 +5,7 @@ import { AuthStore } from './features/auth/auth.store';
 import { ToastService } from './shared/ui/toast';
 import { SidebarComponent } from './shell/sidebar.component';
 import { TopbarComponent } from './shell/topbar.component';
+import { LucideAlertCircle, LucideCheck } from '@lucide/angular';
 
 const TITLES: Record<string, { title: string; crumb: string }> = {
   '/dashboard': { title: 'Welcome back', crumb: 'Dashboard' },
@@ -17,7 +18,7 @@ const TITLES: Record<string, { title: string; crumb: string }> = {
 @Component({
   selector: 'sb-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, TopbarComponent],
+  imports: [RouterOutlet, SidebarComponent, TopbarComponent, LucideAlertCircle, LucideCheck],
   template: `
     @if (isAuthRoute()) {
       <router-outlet />
@@ -36,7 +37,10 @@ const TITLES: Record<string, { title: string; crumb: string }> = {
         <div style="padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
           <span style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
             [style.background]="toast.type() === 'error' ? 'rgba(248,113,113,.15)' : 'rgba(59,130,246,.15)'"
-            [style.color]="toast.type() === 'error' ? '#fca5a5' : '#93c5fd'">{{ toast.type() === 'error' ? '!' : '✓' }}</span>
+            [style.color]="toast.type() === 'error' ? '#fca5a5' : '#93c5fd'">
+            @if (toast.type() === 'error') { <svg lucideAlertCircle style="width:18px;height:18px" /> }
+            @if (toast.type() === 'success') { <svg lucideCheck style="width:18px;height:18px" /> }
+          </span>
           <div style="min-width:0">
             <p style="font-size:12.5px;font-weight:600;color:#fff">{{ toast.title() }}</p>
             <p style="font-size:12px;color:var(--muted);margin-top:2px">{{ toast.message() }}</p>

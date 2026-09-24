@@ -66,10 +66,12 @@ public sealed class FakeJournals : IJournalRepository
     public Task AddAsync(JournalTransaction tx, CancellationToken ct) { Stored.Add(tx); return Task.CompletedTask; }
     public void AddOutbox(OutboxMessage message) => Outbox.Add(message);
     public Task SaveChangesAsync(CancellationToken ct) => Task.CompletedTask;
-    public Task<List<JournalTransaction>> ListByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, int page, int pageSize, CancellationToken ct)
+    public Task<List<JournalTransaction>> ListByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind, int page, int pageSize, CancellationToken ct)
         => Task.FromResult(Stored);
-    public Task<int> CountByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, CancellationToken ct)
+    public Task<int> CountByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind, CancellationToken ct)
         => Task.FromResult(Stored.Count);
+    public Task<decimal> SumSignedOlderThanAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind, DateTimeOffset bookedAt, Guid lineId, CancellationToken ct)
+        => Task.FromResult(0m);
 }
 
 public sealed class TransferHandlerTests

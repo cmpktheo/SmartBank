@@ -5,7 +5,7 @@ using SmartBank.Ledger.Domain.Events;
 namespace SmartBank.Ledger.Domain;
 
 public enum LedgerDirection { Debit = 1, Credit = 2 }
-public enum JournalType { Transfer = 1, Fee = 2, Reversal = 3, Adjustment = 4 }
+public enum JournalType { Transfer = 1, Fee = 2, Reversal = 3, Adjustment = 4, CardPayment = 5 }
 
 public sealed class LedgerLine : Entity<Guid>
 {
@@ -48,7 +48,8 @@ public sealed class JournalTransaction : AggregateRoot<Guid>
         string? narrative,
         string? idempotencyKey,
         DateTimeOffset now,
-        string reference)
+        string reference,
+        JournalType type = JournalType.Transfer)
     {
         if (sourceAccountId == destinationAccountId)
             return Result.Failure<JournalTransaction>(Error.Validation("LEDGER_SAME_ACCOUNT", "Source and destination must differ."));
@@ -59,7 +60,7 @@ public sealed class JournalTransaction : AggregateRoot<Guid>
         {
             Id = id,
             Reference = reference,
-            Type = JournalType.Transfer,
+            Type = type,
             Currency = amount.Currency.Code,
             BookedAt = now,
             SourceAccountId = sourceAccountId,

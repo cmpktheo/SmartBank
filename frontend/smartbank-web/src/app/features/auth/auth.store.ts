@@ -18,6 +18,7 @@ export class AuthStore {
   mfaExpiresAt = signal<number | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
+  otpCode = signal<string | null>(null);
 
   isAuthenticated = computed(() => !!this.accessToken());
   private refreshing: Promise<void> | null = null;
@@ -33,6 +34,7 @@ export class AuthStore {
         this.mfaChallengeId.set(res.challengeId);
         this.mfaExpiresAt.set(Date.now() + res.expiresInSeconds * 1000);
         this.email.set(email);
+        this.otpCode.set(null);
         this.router.navigate(['/auth/mfa']);
       } else {
         this.setTokens(res);
@@ -65,12 +67,39 @@ export class AuthStore {
   }
 
   async resendMfa() {
-    await firstValueFrom(
-      this.http.post(`${environment.apiBaseUrl}/api/auth/mfa/resend`, {
-        challengeId: this.mfaChallengeId(),
-      })
-    );
-    this.mfaExpiresAt.set(Date.now() + 300_000);
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const res = await firstValueFrom(
+        this.http.post<{ expiresInSeconds: number }>(`${environment.apiBaseUrl}/api/auth/mfa/resend`, {
+          challengeId: this.mfaChallengeId(),
+        })
+      );
+      const expiresIn = res?.expiresInSeconds ?? 300;
+      this.mfaExpiresAt.set(Date.now() + expiresIn * 1000);
+      // Old demo code is now invalid — force a fresh fetch instead of showing a stale OTP.
+      this.otpCode.set(null);
+    } catch (e: any) {
+      this.error.set(e.error?.detail ?? e.error?.title ?? 'Could not resend code. Try again.');
+      throw e;
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async fetchOtp() {
+    const email = this.email();
+    if (!email) return null;
+    try {
+      const res = await firstValueFrom(
+        this.http.get<{ code: string }>(`${environment.apiBaseUrl}/api/auth/e2e/otp?email=${email}`)
+      );
+      this.otpCode.set(res.code ?? null);
+      return res.code ?? null;
+    } catch {
+      this.otpCode.set(null);
+      return null;
+    }
   }
 
   async refresh(): Promise<void> {
@@ -103,6 +132,7 @@ export class AuthStore {
     this.expiresAt.set(null);
     this.customerId.set(null);
     sessionStorage.removeItem('sb.tokens');
+    sessionStorage.removeItem('sb.selectedAccountId');
     await this.router.navigate(['/auth/login'], { replaceUrl: true });
   }
 

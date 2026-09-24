@@ -91,6 +91,7 @@ button { font-family: inherit; }
 .sb-top-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .sb-user-chip { display: none; align-items: center; gap: 10px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,0.1); }
 @media (min-width: 640px) { .sb-user-chip { display: flex; } }
+@media (min-width: 1024px) { .sb-topbar .sb-nav-btn { display: none; } }
 
 /* ---------- cards / buttons / fields ---------- */
 .card {

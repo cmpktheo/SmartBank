@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "SmartBank.BuildingBlocks.Web": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:57181;http://localhost:57182"
+    }
+  }
+}

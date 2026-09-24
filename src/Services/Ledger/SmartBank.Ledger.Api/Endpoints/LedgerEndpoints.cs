@@ -39,15 +39,17 @@ public static class StatementEndpoints
 {
     public static void MapStatementEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/ledger/accounts/{accountId:guid}/transactions", async (Guid accountId, string? from, string? to, string? type, int? page, int? pageSize,
+        app.MapGet("/api/ledger/accounts/{accountId:guid}/transactions", async (Guid accountId, string? from, string? to, string? type, string? kind, int? page, int? pageSize,
             Application.Abstractions.IJournalRepository repo, HttpContext ctx) =>
         {
             var p = page.GetValueOrDefault(1);
             var ps = Math.Min(pageSize.GetValueOrDefault(20), 100);
             DateTimeOffset? f = from is null ? null : DateTimeOffset.Parse(from, CultureInfo.InvariantCulture);
             DateTimeOffset? t = to is null ? null : DateTimeOffset.Parse(to, CultureInfo.InvariantCulture);
-            var items = await repo.ListByAccountAsync(accountId, f, t, type is "All" ? null : type, p, ps, ctx.RequestAborted);
-            var total = await repo.CountByAccountAsync(accountId, f, t, type is "All" ? null : type, ctx.RequestAborted);
+            JournalType? k = Enum.TryParse<JournalType>(kind, true, out var parsed) ? parsed : null;
+            var items = await repo.ListByAccountAsync(accountId, f, t, type is "All" ? null : type, k, p, ps, ctx.RequestAborted);
+            var total = await repo.CountByAccountAsync(accountId, f, t, type is "All" ? null : type, k, ctx.RequestAborted);
+            var balances = await RunningBalancesAsync(repo, items, accountId, f, t, type, k, ctx.RequestAborted);
             var flat = items.SelectMany(j => j.Lines.Where(l => l.AccountId == accountId)
                 .Where(l => type is null or "All" || l.Direction.ToString() == type)
                 .Select(l => new
@@ -60,8 +62,9 @@ public static class StatementEndpoints
                     currency = l.Amount.Currency.Code,
                     counterpartyIban = j.CounterpartyIban,
                     narrative = j.Narrative,
-                    balanceAfter = (string?)null
-                })).ToList();
+                    kind = j.Type.ToString(),
+                    balanceAfter = balances.TryGetValue(l.Id, out var b) ? b.ToString("0.00", CultureInfo.InvariantCulture) : null
+                })).OrderByDescending(x => x.bookedAt).ThenBy(x => x.reference).ToList();
             return Results.Ok(new { items = flat, page = p, pageSize = ps, total });
         }).RequireAuthorization();
 
@@ -69,16 +72,19 @@ public static class StatementEndpoints
             Application.Abstractions.IJournalRepository repo, HttpContext ctx) =>
         {
             var l = Math.Min(limit.GetValueOrDefault(10), 10);
-            var items = await repo.ListByAccountAsync(accountId, null, null, null, 1, l, ctx.RequestAborted);
+            var items = await repo.ListByAccountAsync(accountId, null, null, null, null, 1, l, ctx.RequestAborted);
+            var balances = await RunningBalancesAsync(repo, items, accountId, null, null, null, null, ctx.RequestAborted);
             return Results.Ok(items.SelectMany(j => j.Lines.Where(x => x.AccountId == accountId).Select(x => new
             {
                 transactionId = j.Id,
                 reference = j.Reference,
                 bookedAt = j.BookedAt,
                 direction = x.Direction.ToString(),
+                kind = j.Type.ToString(),
                 amount = x.Amount.Amount.ToString("0.00", CultureInfo.InvariantCulture),
-                currency = x.Amount.Currency.Code
-            })).Take(l));
+                currency = x.Amount.Currency.Code,
+                balanceAfter = balances.TryGetValue(x.Id, out var b) ? b.ToString("0.00", CultureInfo.InvariantCulture) : null
+            })).OrderByDescending(x => x.bookedAt).ThenBy(x => x.reference).Take(l));
         }).RequireAuthorization();
 
         app.MapGet("/api/ledger/accounts/{accountId:guid}/statement.csv", async (Guid accountId, string? from, string? to,
@@ -86,17 +92,54 @@ public static class StatementEndpoints
         {
             DateTimeOffset? f = from is null ? null : DateTimeOffset.Parse(from, CultureInfo.InvariantCulture);
             DateTimeOffset? t = to is null ? null : DateTimeOffset.Parse(to, CultureInfo.InvariantCulture);
-            var items = await repo.ListByAccountAsync(accountId, f, t, null, 1, 1000, ctx.RequestAborted);
+            var items = await repo.ListByAccountAsync(accountId, f, t, null, null, 1, 1000, ctx.RequestAborted);
+            var balances = await RunningBalancesAsync(repo, items, accountId, f, t, null, null, ctx.RequestAborted);
+            var rows = items.SelectMany(j => j.Lines.Where(x => x.AccountId == accountId).Select(line => new { Journal = j, Line = line }))
+                .OrderByDescending(x => x.Journal.BookedAt).ThenBy(x => x.Journal.Reference).ToList();
             var sb = new StringBuilder();
-            sb.AppendLine("BookedAt,Reference,Direction,Amount,Currency,CounterpartyIban,Narrative");
-            foreach (var j in items)
-                foreach (var line in j.Lines.Where(x => x.AccountId == accountId))
-                    sb.AppendLine(string.Join(',', j.BookedAt.ToString("O"), Csv(j.Reference), line.Direction,
-                        line.Amount.Amount.ToString("0.00", CultureInfo.InvariantCulture), line.Amount.Currency.Code,
-                        Csv(j.CounterpartyIban), Csv(j.Narrative)));
+            sb.AppendLine("BookedAt,Reference,Kind,Direction,Amount,Currency,CounterpartyIban,Narrative,BalanceAfter");
+            foreach (var r in rows)
+            {
+                var j = r.Journal;
+                var line = r.Line;
+                sb.AppendLine(string.Join(',', j.BookedAt.ToString("O"), Csv(j.Reference), j.Type, line.Direction,
+                    line.Amount.Amount.ToString("0.00", CultureInfo.InvariantCulture), line.Amount.Currency.Code,
+                    Csv(j.CounterpartyIban), Csv(j.Narrative),
+                    balances.TryGetValue(line.Id, out var b) ? b.ToString("0.00", CultureInfo.InvariantCulture) : string.Empty));
+            }
             return Results.Text(sb.ToString(), "text/csv");
         }).RequireAuthorization();
     }
 
     private static string Csv(string? s) => '"' + (s ?? string.Empty).Replace("\"", "\"\"") + '"';
+
+    /// <summary>
+    /// Running balance per journal line: prefix aggregate over all matching lines older than the
+    /// page in (BookedAt, Id) order, then forward accumulation across the page oldest-first.
+    /// Exact regardless of page cuts, without loading full history.
+    /// </summary>
+    private static async Task<Dictionary<Guid, decimal>> RunningBalancesAsync(
+        Application.Abstractions.IJournalRepository repo,
+        List<JournalTransaction> journals,
+        Guid accountId,
+        DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind,
+        CancellationToken ct)
+    {
+        var pageLines = journals
+            .SelectMany(j => j.Lines.Where(l => l.AccountId == accountId)
+                .Where(l => direction is null or "All" || l.Direction.ToString() == direction)
+                .Select(l => new { Line = l }))
+            .OrderBy(x => x.Line.BookedAt).ThenBy(x => x.Line.Id)
+            .ToList();
+        var result = new Dictionary<Guid, decimal>();
+        if (pageLines.Count == 0) return result;
+        var oldest = pageLines[0].Line;
+        var running = await repo.SumSignedOlderThanAsync(accountId, from, to, direction, kind, oldest.BookedAt, oldest.Id, ct);
+        foreach (var pl in pageLines)
+        {
+            running += pl.Line.Direction == LedgerDirection.Credit ? pl.Line.Amount.Amount : -pl.Line.Amount.Amount;
+            result[pl.Line.Id] = running;
+        }
+        return result;
+    }
 }

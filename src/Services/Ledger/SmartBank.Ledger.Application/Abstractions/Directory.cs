@@ -23,6 +23,8 @@ public interface IJournalRepository
     /// <summary>Stage an outbox row in the same DbContext/transaction as the journal (atomic book+publish intent).</summary>
     void AddOutbox(SmartBank.BuildingBlocks.Infrastructure.Outbox.OutboxMessage message);
     Task SaveChangesAsync(CancellationToken ct);
-    Task<List<JournalTransaction>> ListByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, int page, int pageSize, CancellationToken ct);
-    Task<int> CountByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, CancellationToken ct);
+    Task<List<JournalTransaction>> ListByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind, int page, int pageSize, CancellationToken ct);
+    Task<int> CountByAccountAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind, CancellationToken ct);
+    /// <summary>Signed sum (credit +, debit −) of matching lines strictly older than the given cursor in (BookedAt, Id) order.</summary>
+    Task<decimal> SumSignedOlderThanAsync(Guid accountId, DateTimeOffset? from, DateTimeOffset? to, string? direction, JournalType? kind, DateTimeOffset bookedAt, Guid lineId, CancellationToken ct);
 }

@@ -1,31 +1,35 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AccountSelectionStore } from '../accounts/account-selection.store';
 import { firstValueFrom } from 'rxjs';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import type { AccountSummary } from '../../core/models/models';
+import { LucideArrowUpRight, LucideCreditCard, LucideWallet, LucideArrowLeftRight } from '@lucide/angular';
 
 interface RecentTx {
   transactionId: string;
   reference: string;
   bookedAt: string;
   direction: string;
+  kind: string;
   amount: string;
   currency: string;
+  balanceAfter: string;
 }
 
 @Component({
   selector: 'sb-dashboard',
   standalone: true,
-  imports: [RouterLink, CurrencyPipe, DatePipe],
+  imports: [RouterLink, CurrencyPipe, DatePipe, LucideArrowUpRight, LucideCreditCard, LucideWallet, LucideArrowLeftRight],
   template: `
     <div class="sb-container tab-pane">
       <!-- Balance overview: real accounts only, grouped by currency (no FX conversion API) -->
       <section class="card card-pad" aria-label="Account balances">
         <div class="card-head">
           <div style="display:flex;align-items:center;gap:12px">
-            <div class="sb-brand-mark" aria-hidden="true">◈</div>
+            <div class="sb-brand-mark" aria-hidden="true"><svg lucideWallet style="width:20px;height:20px" /></div>
             <div>
               <h2 style="font-size:15px;color:#fff">Total balances</h2>
               <p class="muted" style="font-size:11.5px">Per-currency totals · no conversion applied</p>
@@ -48,7 +52,7 @@ interface RecentTx {
           </div>
           <div class="grid-3">
             @for (acc of accounts(); track acc.id) {
-              <article data-testid="dashboard-account-card" [routerLink]="['/accounts', acc.id]" style="cursor:pointer"
+              <article data-testid="dashboard-account-card" (click)="openDetail(acc.id)" (keydown.enter)="openDetail(acc.id)" style="cursor:pointer"
                 class="card-hover" tabindex="0" role="link" [attr.aria-label]="'Open ' + acc.alias">
                 <div class="row-between" style="margin-bottom:12px">
                   <span class="micro-label" style="color:#93c5fd">{{ acc.type }} · {{ acc.currency }}</span>
@@ -65,8 +69,8 @@ interface RecentTx {
           </div>
         }
         <div class="divider" style="display:flex;gap:10px;flex-wrap:wrap">
-          <a data-testid="quick-transfer-btn" routerLink="/transfers" class="btn-primary" style="flex:1;min-width:160px">↗ Transfer funds</a>
-          <a data-testid="quick-cards-btn" routerLink="/cards" class="btn-secondary" style="flex:1;min-width:160px">▭ Manage cards</a>
+          <a data-testid="quick-transfer-btn" routerLink="/transfers" class="btn-primary" style="flex:1;min-width:160px"><svg lucideArrowUpRight style="width:16px;height:16px" /> Transfer funds</a>
+          <a data-testid="quick-cards-btn" routerLink="/cards" class="btn-secondary" style="flex:1;min-width:160px"><svg lucideCreditCard style="width:16px;height:16px" /> Manage cards</a>
         </div>
       </section>
 
@@ -78,7 +82,7 @@ interface RecentTx {
             <p class="muted" style="font-size:12px">Real-time ledger · {{ recentAccountAlias() }}</p>
           </div>
           @if (firstAccountId()) {
-            <a [routerLink]="['/accounts', firstAccountId()]" class="btn-secondary" style="font-size:12px;padding:8px 12px">View statement (CSV)</a>
+            <button (click)="openDetail(firstAccountId())" class="btn-secondary" style="font-size:12px;padding:8px 12px;cursor:pointer">View statement (CSV)</button>
           }
         </div>
         @if (recent().length === 0) {
@@ -86,23 +90,28 @@ interface RecentTx {
         } @else {
           <div class="sb-table-wrap">
             <table class="sb-table">
-              <thead><tr><th>Transaction</th><th>Date</th><th style="text-align:right">Amount</th></tr></thead>
+              <thead><tr><th>Transaction</th><th>Date</th><th style="text-align:right">Amount</th><th style="text-align:right">Balance</th></tr></thead>
               <tbody>
                 @for (tx of recent(); track tx.reference) {
                   <tr data-testid="recent-transaction-item">
-                    <td><strong style="color:#fff;font-size:13px">{{ tx.reference }}</strong></td>
+                    <td><strong style="color:#fff;font-size:13px">{{ tx.reference }}</strong>
+                      @if (tx.kind === 'CardPayment') {
+                        <span class="pill pill-blue" style="margin-left:8px"><svg lucideCreditCard style="width:11px;height:11px" /> Card</span>
+                      } @else {
+                        <span class="pill" style="margin-left:8px"><svg lucideArrowLeftRight style="width:11px;height:11px" /> Transfer</span>
+                      }</td>
                     <td class="muted tnum">{{ tx.bookedAt | date:'medium' }}</td>
                     <td style="text-align:right" data-testid="recent-transaction-amount"
                       [class.amount-credit]="tx.direction==='Credit'" class="tnum mono">
                       {{ tx.direction === 'Credit' ? '+' : '−' }}{{ tx.amount }} {{ tx.currency }}
                     </td>
+                    <td data-testid="recent-transaction-balance" class="tnum mono" style="text-align:right">{{ tx.balanceAfter }} {{ tx.currency }}</td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
         }
-        <p class="compliance">Protected by 256-bit TLS · Deposits insured up to $250,000</p>
       </section>
     </div>
   `,
@@ -112,6 +121,8 @@ interface RecentTx {
 })
 export class DashboardPage implements OnInit {
   private http = inject(HttpClient);
+  private router = inject(Router);
+  private selection = inject(AccountSelectionStore);
   accounts = signal<AccountSummary[]>([]);
   recent = signal<RecentTx[]>([]);
   loading = signal(true);
@@ -128,6 +139,12 @@ export class DashboardPage implements OnInit {
     for (const a of this.accounts()) map.set(a.currency, (map.get(a.currency) ?? 0) + Number(a.availableBalance));
     return [...map.entries()].map(([currency, total]) => ({ currency, total: String(total) }));
   });
+
+  openDetail(id: string) {
+    if (!id) return;
+    this.selection.select(id);
+    this.router.navigate(['/accounts/detail']);
+  }
 
   async ngOnInit() {
     try {

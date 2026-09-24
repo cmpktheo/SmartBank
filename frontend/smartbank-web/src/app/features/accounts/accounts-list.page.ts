@@ -1,17 +1,19 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
+import { AccountSelectionStore } from './account-selection.store';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { CurrencyPipe } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import { ComboBoxComponent, type ComboOption } from '../../shared/ui/combo-box.component';
+import { LucideArrowRight } from '@lucide/angular';
 import type { AccountSummary } from '../../core/models/models';
 
 @Component({
   selector: 'sb-accounts-list',
   standalone: true,
-  imports: [RouterLink, FormsModule, CurrencyPipe, ComboBoxComponent],
+  imports: [FormsModule, CurrencyPipe, ComboBoxComponent, LucideArrowRight],
   template: `
     <div class="sb-container tab-pane">
       <div class="row-between" style="flex-wrap:wrap">
@@ -38,7 +40,7 @@ import type { AccountSummary } from '../../core/models/models';
 
       <div class="grid-3">
         @for (a of accounts(); track a.id) {
-          <article class="card card-pad card-hover" data-testid="dashboard-account-card" [routerLink]="['/accounts', a.id]" style="cursor:pointer" tabindex="0">
+          <article class="card card-pad card-hover" data-testid="dashboard-account-card" (click)="openDetail(a.id)" (keydown.enter)="openDetail(a.id)" style="cursor:pointer" tabindex="0" role="link" [attr.aria-label]="'Open ' + a.alias">
             <div class="row-between" style="margin-bottom:12px">
               <span class="micro-label" style="color:#93c5fd">{{ a.type }} · {{ a.currency }}</span>
               <span class="pill" [class.pill-green]="a.status==='Active'" [class.pill-amber]="a.status==='Frozen'" [class.pill-red]="a.status==='Closed'">{{ a.status }}</span>
@@ -47,7 +49,7 @@ import type { AccountSummary } from '../../core/models/models';
             <div data-testid="dashboard-account-iban" class="mono muted" style="font-size:11.5px">{{ a.ibanFormatted }}</div>
             <p class="tnum" data-testid="dashboard-account-balance" style="font-size:28px;font-weight:700;color:#fff;font-family:Outfit,sans-serif;margin-top:6px">{{ +a.availableBalance | currency: a.currency }}</p>
             <div class="muted" style="font-size:11.5px">Available · posted {{ +a.postedBalance | currency: a.currency }}</div>
-            <div class="divider row-between muted mono" style="font-size:11.5px"><span>{{ a.ibanFormatted.slice(-4) }}</span><span>View statement →</span></div>
+            <div class="divider row-between muted mono" style="font-size:11.5px"><span>{{ a.ibanFormatted.slice(-4) }}</span><span style="display:inline-flex;align-items:center;gap:4px">View statement <svg lucideArrowRight style="width:12px;height:12px" /></span></div>
           </article>
         } @empty {
           <p class="muted">No accounts yet.</p>
@@ -58,6 +60,8 @@ import type { AccountSummary } from '../../core/models/models';
 })
 export class AccountsListPage implements OnInit {
   private http = inject(HttpClient);
+  private router = inject(Router);
+  private selection = inject(AccountSelectionStore);
   accounts = signal<AccountSummary[]>([]);
   showNew = signal(false);
   alias = signal('');
@@ -67,8 +71,8 @@ export class AccountsListPage implements OnInit {
   error = signal<string | null>(null);
 
   readonly typeOptions: ComboOption[] = [
-    { value: 'Current', label: 'Current', sub: 'Everyday payments', icon: '◈' },
-    { value: 'Savings', label: 'Savings', sub: 'Set money aside', icon: '⬣' },
+    { value: 'Current', label: 'Current', sub: 'Everyday payments', icon: 'wallet' },
+    { value: 'Savings', label: 'Savings', sub: 'Set money aside', icon: 'circle' },
   ];
   readonly currencyOptions: ComboOption[] = [
     { value: 'EUR', label: 'EUR — Euro', sub: 'European accounts', icon: '€' },
@@ -79,6 +83,11 @@ export class AccountsListPage implements OnInit {
   async ngOnInit() {
     const accounts = await firstValueFrom(this.http.get<AccountSummary[]>(`${environment.apiBaseUrl}/api/accounts`));
     this.accounts.set(accounts);
+  }
+
+  openDetail(id: string) {
+    this.selection.select(id);
+    this.router.navigate(['/accounts/detail']);
   }
 
   async openAccount() {

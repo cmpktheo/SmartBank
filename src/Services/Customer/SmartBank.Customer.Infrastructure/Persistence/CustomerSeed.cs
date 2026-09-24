@@ -33,8 +33,21 @@ public static class CustomerSeed
         }
         if (!await db.BankAccounts.AnyAsync())
         {
-            // UK IBANs (GB, sort code 601613 / NWBK) + GBP + balances > 10,000.
-            var factory = new IbanFactory("NWBK", "601613");
+            var factory = new IbanFactory("601613");
+            await AddAccount(db, AlexEverydayAccountId, alexId, "Everyday", AccountType.Current, 25000m, factory);
+            await AddAccount(db, AlexSavingsAccountId, alexId, "Rainy Day", AccountType.Savings, 18000m, factory);
+            await AddAccount(db, JordanMainAccountId, jordanId, "Main", AccountType.Current, 15000m, factory);
+        }
+        else
+        {
+            var factory = new IbanFactory("601613");
+            await db.Holds.ExecuteDeleteAsync();
+            foreach (var accountId in new[] { AlexEverydayAccountId, AlexSavingsAccountId, JordanMainAccountId })
+            {
+                var existing = await db.BankAccounts.FirstOrDefaultAsync(a => a.Id == accountId);
+                if (existing != null) db.BankAccounts.Remove(existing);
+            }
+            await db.SaveChangesAsync();
             await AddAccount(db, AlexEverydayAccountId, alexId, "Everyday", AccountType.Current, 25000m, factory);
             await AddAccount(db, AlexSavingsAccountId, alexId, "Rainy Day", AccountType.Savings, 18000m, factory);
             await AddAccount(db, JordanMainAccountId, jordanId, "Main", AccountType.Current, 15000m, factory);

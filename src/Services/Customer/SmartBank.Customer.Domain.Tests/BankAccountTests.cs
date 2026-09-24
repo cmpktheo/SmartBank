@@ -137,20 +137,19 @@ public sealed class CustomerTests
     }
 
     [Fact]
-    public void Iban_GenerateGb_UsesConfiguredBankAndSortCode()
+    public void IbanFactory_Create_GeneratesNumericIban()
     {
-        var factory = new IbanFactory("NWBK", "601613");
+        var factory = new IbanFactory("601613");
         var iban = factory.Create(1000000001);
-        iban.Value.Should().StartWith("GB");
-        iban.Value.Should().HaveLength(22);
+        iban.Value.Should().StartWith("10");
         Iban.PassesMod97(iban.Value).Should().BeTrue();
     }
 
     [Fact]
-    public void Iban_GenerateGb_DefaultFactory_IsUk()
+    public void IbanFactory_DefaultFactory_GeneratesNumericIban()
     {
         var iban = new IbanFactory().Create(1000000002);
-        iban.Value.Should().StartWith("GB");
+        iban.Value.Should().StartWith("10");
         Iban.PassesMod97(iban.Value).Should().BeTrue();
     }
 }

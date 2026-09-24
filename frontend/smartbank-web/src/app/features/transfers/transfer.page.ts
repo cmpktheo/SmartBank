@@ -6,13 +6,14 @@ import { environment } from '../../../environments/environment';
 import { compactIban, isValidIban, formatIban } from '../../core/iban';
 import { ComboBoxComponent, type ComboOption } from '../../shared/ui/combo-box.component';
 import type { AccountSummary } from '../../core/models/models';
+import { LucideCheck } from '@lucide/angular';
 
 const CURRENCY_GLYPH: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
 
 @Component({
   selector: 'sb-transfer',
   standalone: true,
-  imports: [FormsModule, ComboBoxComponent],
+  imports: [FormsModule, ComboBoxComponent, LucideCheck],
   template: `
     <div class="sb-container tab-pane" style="max-width:720px">
       <div><h2 style="font-size:22px;color:#fff">Send money</h2>
@@ -50,7 +51,7 @@ const CURRENCY_GLYPH: Record<string, string> = { EUR: '€', USD: '$', GBP: '£'
           <div><label class="sb-label" for="t-iban">Destination IBAN</label>
             <input id="t-iban" data-testid="transfer-iban-input" class="field mono" [(ngModel)]="iban" (ngModelChange)="onIbanChange()" placeholder="CH93…" autocomplete="off" />
             @if (ibanStatus() === 'verified') {
-              <div data-testid="iban-verified-badge" class="sb-alert sb-alert-ok" style="margin-top:8px">✓ Beneficiary verified — {{ holderName() }}</div>
+              <div data-testid="iban-verified-badge" class="sb-alert sb-alert-ok" style="margin-top:8px"><svg lucideCheck style="width:14px;height:14px" /> Beneficiary verified — {{ holderName() }}</div>
             }
             @if (ibanStatus() === 'invalid') {
               <div data-testid="iban-invalid-msg" class="sb-alert sb-alert-error" style="margin-top:8px">IBAN checksum is invalid.</div>
@@ -99,7 +100,7 @@ const CURRENCY_GLYPH: Record<string, string> = { EUR: '€', USD: '$', GBP: '£'
       }
 
       @if (successReference()) {
-        <div data-testid="transfer-success-msg" class="sb-alert sb-alert-ok" role="status">✓ Transfer booked. Reference: <strong data-testid="transfer-reference" class="mono">{{ successReference() }}</strong></div>
+        <div data-testid="transfer-success-msg" class="sb-alert sb-alert-ok" role="status"><svg lucideCheck style="width:14px;height:14px" /> Transfer booked. Reference: <strong data-testid="transfer-reference" class="mono">{{ successReference() }}</strong></div>
       }
       @if (apiError()) {
         <div class="sb-alert sb-alert-error" role="alert">{{ apiError() }}</div>
@@ -129,7 +130,7 @@ export class TransferPage {
       value: a.id,
       label: `${a.alias} · ${a.availableBalance} ${a.currency}`,
       sub: `${a.type} · …${a.ibanFormatted.slice(-4)} · ${a.status}`,
-      icon: CURRENCY_GLYPH[a.currency] ?? '◈',
+      icon: CURRENCY_GLYPH[a.currency] ?? 'wallet',
     }))
   );
   insufficient = computed(() => {

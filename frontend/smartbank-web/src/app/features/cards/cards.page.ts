@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { LucideArrowLeft, LucideSnowflake, LucideChevronRight } from '@lucide/angular';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { CardDto } from '../../core/models/models';
@@ -8,7 +9,7 @@ import type { CardDto } from '../../core/models/models';
 @Component({
   selector: 'sb-cards',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, LucideArrowLeft, LucideSnowflake, LucideChevronRight],
   template: `
     <div class="sb-container tab-pane">
       <div><h2 style="font-size:22px;color:#fff">Cards</h2>
@@ -16,7 +17,7 @@ import type { CardDto } from '../../core/models/models';
       @if (loading()) { <p class="muted">Loading cards…</p> }
       @else {
         @if (selectedCard(); as card) {
-        <button data-testid="card-back-btn" class="btn-secondary" style="align-self:flex-start;font-size:12.5px;padding:7px 12px" (click)="back()">← All cards</button>
+        <button data-testid="card-back-btn" class="btn-secondary" style="align-self:flex-start;font-size:12.5px;padding:7px 12px" (click)="back()"><svg lucideArrowLeft style="width:14px;height:14px;vertical-align:-2px" /> All cards</button>
         <div class="card card-pad" data-testid="card-detail" style="max-width:560px">
           <div class="bank-card" data-testid="card-visual" style="margin:0 auto 16px">
               <div class="row-between"><span style="font-weight:700;letter-spacing:.06em;font-size:13px;font-family:Outfit,sans-serif">SMARTBANK</span>
@@ -36,7 +37,7 @@ import type { CardDto } from '../../core/models/models';
                   <span data-testid="card-cvv-value" class="mono">{{ cvvFor(card.id) ?? '•••' }}</span></div>
               </div>
               @if (card.status === 'Frozen') {
-                <div class="bank-card-frozen">❄ FROZEN</div>
+                <div class="bank-card-frozen"><svg lucideSnowflake style="width:14px;height:14px;vertical-align:-2px" /> FROZEN</div>
               }
             </div>
 
@@ -55,7 +56,7 @@ import type { CardDto } from '../../core/models/models';
               <div><div class="row-between" style="font-size:12px;margin-bottom:4px"><span class="muted">ATM daily limit ({{ card.currency }})</span><strong class="tnum" style="color:#fff">{{ atmFor(card) }}</strong></div>
                 <input data-testid="card-limit-slider-atm" type="range" min="0" max="2000" step="50" [ngModel]="atmFor(card)" (ngModelChange)="setAtm(card.id, $event)" style="width:100%;accent-color:#2563eb" /></div>
               <button data-testid="card-limit-save-btn" class="btn-primary" style="width:100%" [disabled]="!isDirty(card) || isSaving(card.id)" (click)="saveLimits(card.id)">{{
-                isSaving(card.id) ? 'Saving…' : isDirty(card) ? 'Save limits (' + ecomFor(card) + ' / ' + atmFor(card) + ')' : 'Saved ✓ (' + card.dailyEcommerceLimit + ' / ' + card.dailyAtmLimit + ')'
+                isSaving(card.id) ? 'Saving…' : isDirty(card) ? 'Save limits (' + ecomFor(card) + ' / ' + atmFor(card) + ')' : 'Saved (' + card.dailyEcommerceLimit + ' / ' + card.dailyAtmLimit + ')'
               }}</button>
               @if (saveErrorFor(card.id)) { <p data-testid="card-limit-error" style="font-size:12px;color:#f87171;margin:0">{{ saveErrorFor(card.id) }}</p> }
             </div>
@@ -78,7 +79,7 @@ import type { CardDto } from '../../core/models/models';
                 <span data-testid="card-list-pan" class="mono tnum" style="display:block;font-size:14px;letter-spacing:.06em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ card.maskedPan }}</span>
                 <span class="muted" style="display:block;font-size:11.5px;margin-top:2px">{{ card.status }} · Exp {{ card.expiryMonth }}/{{ card.expiryYear % 100 }}</span>
               </span>
-              <span data-testid="card-list-chevron" aria-hidden="true" style="flex-shrink:0;color:#64748b;font-size:20px;line-height:1">›</span>
+              <svg lucideChevronRight data-testid="card-list-chevron" aria-hidden="true" style="flex-shrink:0;width:20px;height:20px;color:#64748b" />
             </button>
             @if (!$last) { <div style="height:1px;background:rgba(255,255,255,.06);margin:0 12px"></div> }
           } @empty {
