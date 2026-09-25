@@ -64,7 +64,7 @@ const CURRENCY_GLYPH: Record<string, string> = { EUR: '€', USD: '$', GBP: '£'
       }
 
       @if (successReference()) {
-        <div data-testid="transfer-success-msg" class="sb-alert sb-alert-ok" role="status">
+        <div data-testid="transfer-success-msg" class="sb-alert sb-alert-ok flex items-center gap-2" role="status">
           <svg lucideCheck class="size-3.5" /> Transfer booked. Reference:
           <strong data-testid="transfer-reference" class="mono">{{ successReference() }}</strong>
         </div>

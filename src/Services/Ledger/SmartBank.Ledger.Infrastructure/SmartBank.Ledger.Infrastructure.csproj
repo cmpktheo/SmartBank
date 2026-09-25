@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Domain\SmartBank.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Application\SmartBank.BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Infrastructure\SmartBank.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\SmartBank.BuildingBlocks.Web\SmartBank.BuildingBlocks.Web.csproj" />
     <ProjectReference Include="..\..\..\Contracts\SmartBank.Contracts.Grpc\SmartBank.Contracts.Grpc.csproj" />
   </ItemGroup>
 

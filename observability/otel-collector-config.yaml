@@ -30,6 +30,10 @@ exporters:
     endpoint: http://tempo:4317
     tls:
       insecure: true
+  # NOTE: no Loki exporter here. otel-collector-contrib has no `loki`
+  # exporter (it crashed the collector: unknown type "loki"), and apps
+  # already ship logs via Serilog -> Loki directly, so no logs pipeline
+  # is needed on the collector side.
   debug:
     verbosity: basic
 

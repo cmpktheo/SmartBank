@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Serilog.Events;
 using SmartBank.BuildingBlocks.Web;
 using StackExchange.Redis;
 
@@ -10,6 +11,8 @@ builder.Host.UseSerilog((ctx, cfg) =>
     cfg.ReadFrom.Configuration(ctx.Configuration).Enrich.FromLogContext().WriteToSmartBank(ctx.Configuration, "smartbank-gateway"));
 
 ((IHostApplicationBuilder)builder).AddSmartBankOpenTelemetry("smartbank-gateway");
+builder.Services.AddTransient<CorrelationIdForwardingHandler>();
+builder.Services.ConfigureHttpClientDefaults(b => b.AddHttpMessageHandler<CorrelationIdForwardingHandler>());
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
 builder.Services.AddAuthentication("Bearer")
@@ -38,6 +41,20 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 var app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseSerilogRequestLogging(o =>
+{
+    o.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms (CorrelationId={CorrelationId})";
+    // Health probes fire every few seconds — keep them out of Loki.
+    o.GetLevel = (ctx, _, _) => ctx.Request.Path.StartsWithSegments("/health")
+        ? LogEventLevel.Verbose
+        : LogEventLevel.Information;
+    o.EnrichDiagnosticContext = (dc, http) =>
+    {
+        dc.Set("CorrelationId", http.Items["CorrelationId"]?.ToString() ?? http.TraceIdentifier);
+        dc.Set("RequestPath", http.Request.Path.ToString());
+        dc.Set("RequestMethod", http.Request.Method);
+    };
+});
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

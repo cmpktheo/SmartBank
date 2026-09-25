@@ -3,12 +3,15 @@ using System.Text;
 using System.Text.Json;
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SmartBank.BuildingBlocks.Application;
 using SmartBank.BuildingBlocks.Application.Metrics;
 using SmartBank.BuildingBlocks.Domain;
 using SmartBank.BuildingBlocks.Domain.ValueObjects;
 using SmartBank.BuildingBlocks.EventBus;
 using SmartBank.BuildingBlocks.Infrastructure.Idempotency;
+using SmartBank.BuildingBlocks.Infrastructure.Logging;
 using SmartBank.BuildingBlocks.Infrastructure.Outbox;
 using SmartBank.Ledger.Application.Abstractions;
 using SmartBank.Ledger.Domain;
@@ -49,10 +52,12 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
     private readonly ICurrentUser _user;
     private readonly IClock _clock;
     private readonly Action<string>? _outboxWriter;
+    private readonly ILogger<TransferFundsCommandHandler> _logger;
 
     public TransferFundsCommandHandler(
         IAccountDirectory directory, IJournalRepository journals, IIdempotencyStore idempotency,
-        ICurrentUser user, IClock clock, Action<string>? outboxWriter = null)
+        ICurrentUser user, IClock clock, Action<string>? outboxWriter = null,
+        ILogger<TransferFundsCommandHandler>? logger = null)
     {
         _directory = directory;
         _journals = journals;
@@ -60,6 +65,7 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         _user = user;
         _clock = clock;
         _outboxWriter = outboxWriter;
+        _logger = logger ?? NullLogger<TransferFundsCommandHandler>.Instance;
     }
 
     public async Task<Result<TransferResultDto>> Handle(TransferFundsCommand request, CancellationToken ct)
@@ -67,6 +73,7 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         if (request.TransferType == "International")
         {
             SmartBankMeters.TransferFailed("LEDGER_FX_NOT_SUPPORTED");
+            AuditFailed("LEDGER_FX_NOT_SUPPORTED", request);
             return Result.Failure<TransferResultDto>(Error.Validation("LEDGER_FX_NOT_SUPPORTED", "International transfers not supported."));
         }
 
@@ -75,15 +82,27 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         if (begin.Result == IdempotencyBeginResult.Replay)
         {
             var replayed = JsonSerializer.Deserialize<TransferResultDto>(begin.ResponseBytes!)!;
+            // Idempotent replay: serve the stored outcome, no new booking (Debug, not AUDIT —
+            // counting replays as bookings would corrupt reconciliation).
+            _logger.LogDebug("Transfer replay served from idempotency store for {IdempotencyKey}", request.IdempotencyKey);
             return Result.Success(replayed);
         }
         if (begin.Result == IdempotencyBeginResult.Conflict)
+        {
+            AuditFailed("LEDGER_IDEMPOTENCY_CONFLICT", request);
             return Result.Failure<TransferResultDto>(Error.Conflict("LEDGER_IDEMPOTENCY_CONFLICT", "Idempotency key reused with different body."));
+        }
         if (begin.Result == IdempotencyBeginResult.InProgress)
+        {
+            AuditFailed("LEDGER_IN_PROGRESS", request);
             return Result.Failure<TransferResultDto>(Error.Conflict("LEDGER_IN_PROGRESS", "Transfer already in progress."));
+        }
 
         if (!Iban.TryParse(request.DestinationIban, out var destIban))
+        {
+            AuditFailed("VALIDATION", request);
             return Result.Failure<TransferResultDto>(Error.Validation("VALIDATION", "Invalid IBAN."));
+        }
         var money = Money.Of(request.Amount, Currency.From(request.Currency));
 
         AccountStatusInfo source;
@@ -94,6 +113,7 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         }
         catch (InvalidOperationException ex) when (ex.Message == "CUSTOMER_UNAVAILABLE")
         {
+            AuditFailed("CUSTOMER_UNAVAILABLE", request);
             return Result.Failure<TransferResultDto>(Error.Conflict("CUSTOMER_UNAVAILABLE", "Account directory temporarily unavailable."));
         }
         if (!source.Found) return Fail("ACCOUNT_NOT_FOUND", "Source account not found.", request, fingerprint, ct);
@@ -107,6 +127,7 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         }
         catch (InvalidOperationException ex) when (ex.Message == "CUSTOMER_UNAVAILABLE")
         {
+            AuditFailed("CUSTOMER_UNAVAILABLE", request);
             return Result.Failure<TransferResultDto>(Error.Conflict("CUSTOMER_UNAVAILABLE", "Account directory temporarily unavailable."));
         }
         if (!dest.Found)
@@ -115,10 +136,16 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
             return Fail(code, "Destination unknown in v1 (no external rails).", request, fingerprint, ct);
         }
         if (dest.AccountId == request.SourceAccountId)
+        {
+            AuditFailed("LEDGER_SAME_ACCOUNT", request);
             return Result.Failure<TransferResultDto>(Error.Validation("LEDGER_SAME_ACCOUNT", "Source and destination must differ."));
+        }
         if (dest.Status != "Active") return Fail("ACCOUNT_NOT_ACTIVE", "Destination not active.", request, fingerprint, ct);
         if (dest.Currency != request.Currency)
+        {
+            AuditFailed("LEDGER_FX_NOT_SUPPORTED", request);
             return Result.Failure<TransferResultDto>(Error.Conflict("LEDGER_FX_NOT_SUPPORTED", "Cross-currency not supported."));
+        }
 
         var transactionId = Guid.CreateVersion7();
         ReserveOutcome reserve;
@@ -128,6 +155,7 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         }
         catch (InvalidOperationException ex) when (ex.Message == "CUSTOMER_UNAVAILABLE")
         {
+            AuditFailed("CUSTOMER_UNAVAILABLE", request);
             return Result.Failure<TransferResultDto>(Error.Conflict("CUSTOMER_UNAVAILABLE", "Account directory temporarily unavailable."));
         }
         if (!reserve.Ok)
@@ -136,9 +164,13 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
         var reference = ReferenceGenerator.Generate(_clock.UtcNow, transactionId);
         var journal = JournalTransaction.Transfer(transactionId, request.SourceAccountId, dest.AccountId,
             money, destIban.Value, request.Narrative, request.IdempotencyKey, _clock.UtcNow, reference);
-        if (journal.IsFailure) return journal.Error.Code == "LEDGER_SAME_ACCOUNT" || journal.Error.Code == "LEDGER_ZERO_AMOUNT"
-            ? Result.Failure<TransferResultDto>(Error.Validation(journal.Error.Code, journal.Error.Message))
-            : Result.Failure<TransferResultDto>(journal.Error);
+        if (journal.IsFailure)
+        {
+            AuditFailed(journal.Error.Code, request);
+            return journal.Error.Code == "LEDGER_SAME_ACCOUNT" || journal.Error.Code == "LEDGER_ZERO_AMOUNT"
+                ? Result.Failure<TransferResultDto>(Error.Validation(journal.Error.Code, journal.Error.Message))
+                : Result.Failure<TransferResultDto>(journal.Error);
+        }
 
         // Book + stage settlement intent atomically. Actual money movement
         // (CaptureHold + CreditPosted) happens async in the Customer consumer
@@ -179,18 +211,21 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
             // Hold expires in 30s (Customer TTL) — do not Release here (unreliable).
             // Client retries with the SAME Idempotency-Key.
             SmartBankMeters.TransferFailed("LEDGER_POST_RESERVE_FAILURE");
+            AuditFailed("LEDGER_POST_RESERVE_FAILURE", request);
             throw;
         }
 
         var dto = new TransferResultDto(transactionId, reference, bookedAt);
         await _idempotency.CompleteAsync($"sb:led:idemp:{request.IdempotencyKey}", fingerprint, JsonSerializer.SerializeToUtf8Bytes(dto), ct);
         SmartBankMeters.TransferSucceeded(request.Currency, request.TransferType, (double)request.Amount);
+        AuditBooked(request, transactionId, reference, dest.AccountId);
         return Result.Success(dto);
     }
 
     private Result<TransferResultDto> Fail(string code, string message, TransferFundsCommand request, string fingerprint, CancellationToken ct, bool forbidden = false)
     {
         SmartBankMeters.TransferFailed(code);
+        AuditFailed(code, request);
         var error = forbidden ? Error.Forbidden(code, message)
             : code is "ACCOUNT_NOT_FOUND" or "LEDGER_DESTINATION_UNKNOWN" ? Error.Conflict(code, message)
             : code is "LEDGER_FX_NOT_SUPPORTED" or "LEDGER_EXTERNAL_WIRE_NOT_SUPPORTED" ? Error.Validation(code, message)
@@ -205,5 +240,28 @@ public sealed class TransferFundsCommandHandler : IRequestHandler<TransferFundsC
     {
         var raw = $"{request.SourceAccountId}|{request.DestinationIban}|{request.Amount}|{request.Currency}|{request.TransferType}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+    }
+
+    /// <summary>
+    /// Immutable money pointer for Loki/alerting. The journal DB is the system of
+    /// record; this line is the searchable reconciliation hook (rule:
+    /// <c>SmartBankTransferAuditFailures</c>). IBAN is masked — account GUIDs,
+    /// TransactionId and Reference carry the join keys. CorrelationId arrives via
+    /// LogContext from the HTTP request / consumer scope.
+    /// </summary>
+    private void AuditBooked(TransferFundsCommand request, Guid transactionId, string reference, Guid destinationAccountId)
+    {
+        _logger.LogInformation(
+            "AUDIT transfer_booked {TransactionId} {Reference} {Amount} {Currency} {TransferType} {SourceAccountId} {DestinationAccountId} {IdempotencyKey}",
+            transactionId, reference, request.Amount, request.Currency, request.TransferType,
+            request.SourceAccountId, destinationAccountId, request.IdempotencyKey);
+    }
+
+    private void AuditFailed(string code, TransferFundsCommand request)
+    {
+        _logger.LogWarning(
+            "AUDIT transfer_failed {ErrorCode} {Amount} {Currency} {TransferType} {SourceAccountId} {DestinationIban} {IdempotencyKey}",
+            code, request.Amount, request.Currency, request.TransferType,
+            request.SourceAccountId, PiiMask.MaskIban(request.DestinationIban), request.IdempotencyKey);
     }
 }

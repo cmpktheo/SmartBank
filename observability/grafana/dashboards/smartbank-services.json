@@ -1,0 +1,230 @@
+{
+  "title": "SmartBank Microservices — Usage, Requests & Dependencies",
+  "uid": "smartbank-services",
+  "tags": ["smartbank", "services", "usage"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "Prometheus"},
+        "definition": "label_values(http_server_request_duration_seconds_count, service_name)",
+        "query": {"query": "label_values(http_server_request_duration_seconds_count, service_name)", "refId": "StandardVariableQuery"},
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {"selected": true, "text": ["All"], "value": ["$__all"]},
+        "refresh": 1,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Total request rate",
+      "description": "Sum of ASP.NET request rate across the selected services. Source: http.server.request.duration via OTel Collector -> Prometheus.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "value_and_name"},
+      "targets": [{"refId": "A", "expr": "sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m]))", "legendFormat": "Total RPS"}],
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Services reporting",
+      "description": "Distinct service_name values emitting HTTP server metrics (expect 6: gateway, identity, customer, ledger, cards, notification). A drop means a service stopped exporting.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "value_and_name"},
+      "targets": [{"refId": "A", "expr": "count(sum by (service_name) (rate(http_server_request_duration_seconds_count[5m])))", "legendFormat": "services"}],
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Global 5xx share",
+      "description": "5xx responses as % of all responses across selected services. Mirrors the SmartBankHigh5xxRate alert (>1%).",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "value_and_name"},
+      "targets": [{"refId": "A", "expr": "100 * sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\",http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m])), 0.001)", "legendFormat": "5xx share"}],
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}
+    },
+    {
+      "id": 4, "type": "stat", "title": "OTel pipeline UP",
+      "description": "Prometheus scrape of the OTel Collector (metrics_path /metrics on :8889). 1 = metrics pipeline alive; if 0, all service panels go empty. Per-service liveness is covered by the Services reporting panel (OTel series presence).",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "value_and_name"},
+      "targets": [{"refId": "A", "expr": "up{job=\"otel-collector\"}", "legendFormat": "pipeline"}],
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Request rate per service (RPS)",
+      "description": "Inbound HTTP request rate split by OTel service_name (smartbank-gateway, smartbank-identity, smartbank-customer, smartbank-ledger, smartbank-cards, smartbank-notification).",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m]))", "legendFormat": "{{service_name}}"}],
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 6}
+    },
+    {
+      "id": 6, "type": "piechart", "title": "Request share by service",
+      "description": "Same rate as panel 5, aggregated over the visible range: which microservice serves what share of total traffic.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}, "pieType": "donut"},
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m]))", "legendFormat": "{{service_name}}"}],
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 6}
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Top routes by RPS",
+      "description": "Top 12 (service, method, route) combinations by request rate. http_route is the ASP.NET route template, so cardinality stays bounded.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "topk(12, sum by (service_name, http_request_method, http_route) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m])))", "legendFormat": "{{service_name}} {{http_request_method}} {{http_route}}"}],
+      "gridPos": {"h": 8, "w": 14, "x": 0, "y": 14}
+    },
+    {
+      "id": 8, "type": "table", "title": "Top routes — exact RPS",
+      "description": "Tabular companion to panel 7: current per-route rate for sorting and copy-paste. Instant query (single value per row).",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [{"refId": "A", "format": "table", "instant": true, "range": false, "expr": "sort_desc(sum by (service_name, http_request_method, http_route) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m])))"}],
+      "gridPos": {"h": 8, "w": 10, "x": 14, "y": 14}
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "5xx share per service (%)",
+      "description": "Per-service 5xx ratio: 5xx rate / total rate. Spikes here feed the SmartBankHigh5xxRate alert; drill into panel 13 for the slowest routes.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "100 * sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\",http_response_status_code=~\"5..\"}[5m])) / clamp_min(sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m])), 0.001)", "legendFormat": "{{service_name}}"}],
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 22}
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "4xx share per service (%)",
+      "description": "Per-service 4xx ratio (validation / auth failures, e.g. IDENTITY_INVALID_CREDENTIALS, LEDGER_IDEMPOTENCY_REQUIRED). High 4xx is usually client behavior, not an outage.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "100 * sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\",http_response_status_code=~\"4..\"}[5m])) / clamp_min(sum by (service_name) (rate(http_server_request_duration_seconds_count{service_name=~\"$service\"}[5m])), 0.001)", "legendFormat": "{{service_name}}"}],
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 22}
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "p95 latency per service",
+      "description": "Per-service p95 from the ASP.NET request-duration histogram. Alert threshold (global p95) is 500ms — see SmartBankHighLatencyP95.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s", "min": 0}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m])))", "legendFormat": "{{service_name}}"}],
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 22}
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "p50 / p95 / p99 — selected services",
+      "description": "Latency quantiles aggregated over the services selected in the filter. Use it to judge overall responsiveness; use panel 11 to find which service is slow.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s", "min": 0}, "overrides": []},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m])))", "legendFormat": "p50"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m])))", "legendFormat": "p95"},
+        {"refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m])))", "legendFormat": "p99"}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30}
+    },
+    {
+      "id": 13, "type": "table", "title": "Slowest routes (p95)",
+      "description": "Top 10 (service, route) pairs by p95 latency. Instant query — pair with the RED dashboard p95-by-route graph for history.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [{"refId": "A", "format": "table", "instant": true, "range": false, "expr": "topk(10, histogram_quantile(0.95, sum by (le, service_name, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=~\"$service\"}[5m]))))"}],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30}
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "Outgoing HTTP calls per caller (RPS)",
+      "description": "HttpClient instrumentation per calling service: gateway -> downstream APIs, identity/customer/ledger/cards -> each other, ledger -> customer gRPC :6102 (gRPC runs on HttpClient, so it shows up here).",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(http_client_request_duration_seconds_count{service_name=~\"$service\"}[5m]))", "legendFormat": "{{service_name}} -> out"}],
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 38}
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "Outgoing calls by target",
+      "description": "Top 10 downstream targets (server_address) across the selected callers. Reveals the real dependency edges: who calls whom, how often.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "topk(10, sum by (server_address) (rate(http_client_request_duration_seconds_count{service_name=~\"$service\"}[5m])))", "legendFormat": "{{server_address}}"}],
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 38}
+    },
+    {
+      "id": 16, "type": "timeseries", "title": "Outgoing call errors (5xx) by caller",
+      "description": "Downstream 5xx seen by each caller. If a service's inbound 5xx (panel 9) lines up with another service's outbound 5xx here, the fault is downstream.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(http_client_request_duration_seconds_count{service_name=~\"$service\",http_response_status_code=~\"5..\"}[5m]))", "legendFormat": "{{service_name}} downstream 5xx"}],
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 38}
+    },
+    {
+      "id": 17, "type": "timeseries", "title": ".NET CPU per service",
+      "description": "Runtime CPU seconds rate per service (OpenTelemetry runtime instrumentation). Sustained imbalance across replicas/services points at a hot path, not traffic shape.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(process_runtime_dotnet_cpu_time_seconds_total{service_name=~\"$service\"}[5m]))", "legendFormat": "{{service_name}} cpu"}],
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 46}
+    },
+    {
+      "id": 18, "type": "timeseries", "title": "GC heap per service",
+      "description": "Managed heap size per service. Step-changes correlate with load or cache growth; saw-tooth amplitude reflects GC pressure.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "bytes", "min": 0}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "avg by (service_name) (process_runtime_dotnet_gc_heap_size_bytes{service_name=~\"$service\"})", "legendFormat": "{{service_name}} heap"}],
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 46}
+    },
+    {
+      "id": 19, "type": "timeseries", "title": "Log volume per service",
+      "description": "Lines per minute per Serilog service label (same names as OTel service_name). A quiet service that still serves traffic may have a broken log pipeline, not low usage.",
+      "datasource": {"type": "loki", "uid": "Loki"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [{"refId": "A", "queryType": "range", "expr": "sum by (service) (count_over_time({service=~\"$service\"}[1m]))", "legendFormat": "{{service}}"}],
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 46}
+    },
+    {
+      "id": 20, "type": "timeseries", "title": "Identity usage: logins / MFA / refreshes",
+      "description": "Business meter SmartBank.Identity (SmartBankMeters): login results, MFA verify results, token refresh results.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [
+        {"refId": "A", "expr": "sum by (result) (rate(smartbank_auth_logins_total[5m]))", "legendFormat": "login {{result}}"},
+        {"refId": "B", "expr": "sum by (result) (rate(smartbank_auth_mfa_verifies_total[5m]))", "legendFormat": "mfa {{result}}"},
+        {"refId": "C", "expr": "sum by (result) (rate(smartbank_auth_token_refreshes_total[5m]))", "legendFormat": "refresh {{result}}"}
+      ],
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 54}
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "Ledger usage: transfers",
+      "description": "Business meter SmartBank.Ledger: transfers created by currency, failed by code, plus average transfer amount from the amount histogram.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [
+        {"refId": "A", "expr": "sum by (currency) (rate(smartbank_ledger_transfers_created_total[5m]))", "legendFormat": "created {{currency}}"},
+        {"refId": "B", "expr": "sum by (code) (rate(smartbank_ledger_transfers_failed_total[5m]))", "legendFormat": "failed {{code}}"},
+        {"refId": "C", "expr": "sum(rate(smartbank_ledger_transfer_amount_sum[5m])) / clamp_min(sum(rate(smartbank_ledger_transfer_amount_count[5m])), 0.001)", "legendFormat": "avg amount"}
+      ],
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 54}
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "Customer / Cards / Notifications usage",
+      "description": "Business meters SmartBank.Customer / SmartBank.Cards / SmartBank.Notifications: accounts opened, freeze ops, card ops, notifications sent.",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"custom": {"fillOpacity": 10}}, "overrides": []},
+      "targets": [
+        {"refId": "A", "expr": "sum by (currency) (rate(smartbank_customer_accounts_opened_total[5m]))", "legendFormat": "account opened {{currency}}"},
+        {"refId": "B", "expr": "sum by (op, result) (rate(smartbank_customer_accounts_frozen_total[5m]))", "legendFormat": "{{op}} {{result}}"},
+        {"refId": "C", "expr": "sum by (op, result) (rate(smartbank_cards_ops_total[5m]))", "legendFormat": "card {{op}} {{result}}"},
+        {"refId": "D", "expr": "sum by (template) (rate(smartbank_notifications_sent_total[5m]))", "legendFormat": "notify {{template}}"}
+      ],
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 54}
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Events;
 using SmartBank.BuildingBlocks.EventBus;
 using SmartBank.BuildingBlocks.Infrastructure.Messaging;
 using SmartBank.BuildingBlocks.Web;
@@ -11,6 +12,9 @@ builder.Host.UseSerilog((ctx, cfg) =>
     cfg.ReadFrom.Configuration(ctx.Configuration).Enrich.FromLogContext().WriteToSmartBank(ctx.Configuration, "smartbank-notification"));
 
 ((IHostApplicationBuilder)builder).AddSmartBankOpenTelemetry("smartbank-notification");
+
+builder.Services.AddTransient<CorrelationIdForwardingHandler>();
+builder.Services.ConfigureHttpClientDefaults(b => b.AddHttpMessageHandler<CorrelationIdForwardingHandler>());
 
 builder.Services.AddDbContext<NotificationDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("Notification")));
@@ -30,6 +34,20 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseSerilogRequestLogging(o =>
+{
+    o.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms (CorrelationId={CorrelationId})";
+    // Health probes fire every few seconds — keep them out of Loki.
+    o.GetLevel = (ctx, _, _) => ctx.Request.Path.StartsWithSegments("/health")
+        ? LogEventLevel.Verbose
+        : LogEventLevel.Information;
+    o.EnrichDiagnosticContext = (dc, http) =>
+    {
+        dc.Set("CorrelationId", http.Items["CorrelationId"]?.ToString() ?? http.TraceIdentifier);
+        dc.Set("RequestPath", http.Request.Path.ToString());
+        dc.Set("RequestMethod", http.Request.Method);
+    };
+});
 app.MapHealthChecks("/health/live", new() { Predicate = _ => false });
 app.MapHealthChecks("/health/ready");
 

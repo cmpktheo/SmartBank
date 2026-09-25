@@ -3,7 +3,9 @@ global:
   evaluation_interval: 15s
 
 alerting:
-  alertmanagers: []
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
 
 rule_files:
   - /etc/prometheus/alerts.yml
@@ -17,16 +19,8 @@ scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ['localhost:9090']
-  - job_name: smartbank-health
-    metrics_path: /health/ready
-    scheme: http
-    static_configs:
-      - targets:
-          - 'host.docker.internal:5100'
-          - 'host.docker.internal:5101'
-          - 'host.docker.internal:5102'
-          - 'host.docker.internal:5103'
-          - 'host.docker.internal:5104'
-          - 'host.docker.internal:5105'
-        labels:
-          origin: health-probe
+  # NOTE: no per-service health scrape here. /health/ready returns plain-text
+  # "Healthy", not Prometheus exposition format, so a metrics scrape of it can
+  # never succeed (it only produced perpetual "down" targets + parse errors).
+  # Service liveness is already visible via OTel series presence ("Services
+  # reporting" panels) and the /health/ready endpoints directly.

@@ -12,7 +12,9 @@ public static class OpenTelemetryExtensions
     /// <summary>
     /// Enterprise OTEL wiring: RED + runtime metrics, distributed traces, OTLP export.
     /// Safe when OTEL_EXPORTER_OTLP_ENDPOINT is unset (tests/dev without collector).
-    /// Business meters: add Meter("SmartBank.&lt;Domain&gt;") — picked up via AddMeter("SmartBank.*").
+    /// Business meters: each SmartBank.* Meter must be listed explicitly below.
+    /// (Meter name matching is exact - a "SmartBank.*" wildcard entry does NOT
+    /// subscribe the provider, and those instruments are silently dropped.)
     /// </summary>
     public static IHostApplicationBuilder AddSmartBankOpenTelemetry(this IHostApplicationBuilder builder, string serviceName)
     {
@@ -26,7 +28,16 @@ public static class OpenTelemetryExtensions
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r
-                .AddService(serviceName: serviceName, serviceInstanceId: Environment.MachineName))
+                .AddService(serviceName: serviceName, serviceInstanceId: Environment.MachineName)
+                .AddAttributes(
+                [
+                    new KeyValuePair<string, object>(
+                        "deployment.environment",
+                        Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"),
+                    new KeyValuePair<string, object>(
+                        "service.version",
+                        Environment.GetEnvironmentVariable("SERVICE_VERSION") ?? "unknown"),
+                ]))
             .WithTracing(t =>
             {
                 t.AddAspNetCoreInstrumentation(o =>
@@ -38,6 +49,10 @@ public static class OpenTelemetryExtensions
                             {
                                 activity.SetTag("correlation.id", cid.ToString());
                             }
+                        };
+                        o.EnrichWithHttpResponse = (activity, response) =>
+                        {
+                            activity.SetTag("http.response.status_code", response.StatusCode);
                         };
                     })
                     .AddHttpClientInstrumentation(o => o.RecordException = true)
@@ -58,7 +73,11 @@ public static class OpenTelemetryExtensions
                 m.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
-                    .AddMeter("SmartBank.*");
+                    .AddMeter("SmartBank.Identity")
+                    .AddMeter("SmartBank.Ledger")
+                    .AddMeter("SmartBank.Customer")
+                    .AddMeter("SmartBank.Cards")
+                    .AddMeter("SmartBank.Notifications");
 
                 if (useOtlp)
                 {

@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Events;
 using SmartBank.BuildingBlocks.Application;
 using SmartBank.BuildingBlocks.Infrastructure.Clock;
 using SmartBank.BuildingBlocks.Web;
@@ -21,10 +22,15 @@ builder.Host.UseSerilog((ctx, cfg) =>
 
 ((IHostApplicationBuilder)builder).AddSmartBankOpenTelemetry("smartbank-cards");
 
+builder.Services.AddTransient<CorrelationIdForwardingHandler>();
+builder.Services.ConfigureHttpClientDefaults(b => b.AddHttpMessageHandler<CorrelationIdForwardingHandler>());
+
 builder.Services.AddMediatR(c => c.RegisterServicesFromAssembly(typeof(FreezeCardCommand).Assembly));
 builder.Services.AddValidatorsFromAssembly(typeof(FreezeCardCommand).Assembly);
-builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+// Logging is registered outermost so validation rejections are logged too
+// (MediatR executes behaviors in registration order).
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddHttpContextAccessor();
@@ -63,6 +69,20 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseSerilogRequestLogging(o =>
+{
+    o.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms (CorrelationId={CorrelationId})";
+    // Health probes fire every few seconds — keep them out of Loki.
+    o.GetLevel = (ctx, _, _) => ctx.Request.Path.StartsWithSegments("/health")
+        ? LogEventLevel.Verbose
+        : LogEventLevel.Information;
+    o.EnrichDiagnosticContext = (dc, http) =>
+    {
+        dc.Set("CorrelationId", http.Items["CorrelationId"]?.ToString() ?? http.TraceIdentifier);
+        dc.Set("RequestPath", http.Request.Path.ToString());
+        dc.Set("RequestMethod", http.Request.Method);
+    };
+});
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();

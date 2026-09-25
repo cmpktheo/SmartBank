@@ -9,6 +9,7 @@ using SmartBank.BuildingBlocks.Domain.ValueObjects;
 using SmartBank.BuildingBlocks.EventBus;
 using SmartBank.BuildingBlocks.Infrastructure.Messaging;
 using SmartBank.BuildingBlocks.Infrastructure.Outbox;
+using SmartBank.BuildingBlocks.Web;
 using SmartBank.Customer.Infrastructure.Persistence;
 
 namespace SmartBank.Customer.Api.Messaging;
@@ -61,23 +62,31 @@ public sealed class MoneyTransferredConsumer : BackgroundService
         var evt = MoneyTransferredIntegrationEvent.FromPayload(body);
         if (evt is null)
         {
-            _log.LogWarning("Dropping unparseable MoneyTransferred message");
+            _log.LogWarning("Dropping unparseable MoneyTransferred message ({Bytes} bytes)", ea.Body.Length);
             await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
             return;
         }
 
-        try
+        var traceparent = PoisonMessagePolicy.ReadHeader(ea, "traceparent");
+        using (MessagingScope.Begin(evt.CorrelationId, evt.EventId, evt.TransactionId,
+                   MoneyTransferredIntegrationEvent.TypeName, traceparent))
         {
-            var settled = await SettleAsync(evt, ct);
-            _log.LogInformation("Settled transfer {TransactionId} ({Reference}): {Outcome}",
-                evt.TransactionId, evt.Reference, settled);
-            await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Settlement failed for {TransactionId}; requeueing", evt.TransactionId);
-            // Requeue: hold TTL (30s) + redelivery keeps this safe; poison goes to .dead after broker retries.
-            await channel.BasicNackAsync(ea.DeliveryTag, false, requeue: true, ct);
+            try
+            {
+                var settled = await SettleAsync(evt, ct);
+                _log.LogInformation("Settled transfer {TransactionId} ({Reference}): {Outcome} (CorrelationId={CorrelationId})",
+                    evt.TransactionId, evt.Reference, settled, evt.CorrelationId);
+                await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
+            }
+            catch (Exception ex)
+            {
+                // Requeue while under budget (hold TTL 30s keeps this safe);
+                // PoisonMessagePolicy dead-letters to .dead once exhausted.
+                _log.LogError(ex, "Settlement failed for {TransactionId} (CorrelationId={CorrelationId}, delivery {Delivery})",
+                    evt.TransactionId, evt.CorrelationId, PoisonMessagePolicy.DeliveryCount(ea) + 1);
+                await PoisonMessagePolicy.NackOrDeadLetterAsync(
+                    channel, ea, _log, $"transfer {evt.TransactionId}", ct);
+            }
         }
     }
 

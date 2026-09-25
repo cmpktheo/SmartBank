@@ -22,11 +22,20 @@ public sealed class RabbitMqEventPublisher : IEventPublisher
         {
             await channel.ExchangeDeclareAsync(_exchange, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: ct);
             var body = Encoding.UTF8.GetBytes(payload);
+            var headers = new Dictionary<string, object?>
+            {
+                ["message_type"] = type,
+                ["correlation_id"] = correlationId.ToString(),
+            };
+            // W3C traceparent so consumers can parent their Activity and logs join the trace.
+            var traceparent = System.Diagnostics.Activity.Current?.Id;
+            if (!string.IsNullOrWhiteSpace(traceparent))
+                headers["traceparent"] = traceparent;
             var props = new BasicProperties
             {
                 ContentType = "application/json",
                 DeliveryMode = DeliveryModes.Persistent,
-                Headers = new Dictionary<string, object?> { ["message_type"] = type, ["correlation_id"] = correlationId.ToString() }
+                Headers = headers
             };
             await channel.BasicPublishAsync(_exchange, RoutingKeyFor(type), mandatory: false, basicProperties: props, body: body, cancellationToken: ct);
         }

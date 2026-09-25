@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Transfers — SmartBank Docs</title>
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar hidden-mobile" id="sidebar">
+  <div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Smart<span>Bank</span></div><div class="brand-sub">Developer docs · .NET 10 + Angular 20</div></div></div>
+  <nav class="nav">
+    <div><div class="nav-group-label">Overview</div>
+      <a class="nav-link" href="index.html">Introduction</a>
+      <a class="nav-link" href="tech-stack.html">Tech stack</a>
+      <a class="nav-link" href="architecture.html">Architecture</a>
+      <a class="nav-link" href="communication.html">Communication</a>
+      <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+      <a class="nav-link" href="test-transfers.html">Test Transfers</a>
+    </div>
+    <div><div class="nav-group-label">Services</div>
+      <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
+      <a class="nav-link" href="services/identity.html">Identity <span class="port">:5101</span></a>
+      <a class="nav-link" href="services/customer.html">Customer <span class="port">:5102</span></a>
+      <a class="nav-link" href="services/ledger.html">Ledger <span class="port">:5103</span></a>
+      <a class="nav-link" href="services/cards.html">Cards <span class="port">:5104</span></a>
+      <a class="nav-link" href="services/notification.html">Notification <span class="port">:5105</span></a>
+    </div>
+    <div><div class="nav-group-label">Infrastructure</div>
+      <a class="nav-link" href="infra/index.html">Infra overview</a>
+      <a class="nav-link" href="infra/postgres.html">Postgres ×5</a>
+      <a class="nav-link" href="infra/redis.html">Redis</a>
+      <a class="nav-link" href="infra/rabbitmq.html">RabbitMQ</a>
+      <a class="nav-link" href="infra/observability.html">Observability</a>
+    </div>
+    <div><div class="nav-group-label">Cross-cutting</div>
+      <a class="nav-link" href="building-blocks.html">Building blocks</a>
+      <a class="nav-link" href="contracts.html">Contracts · gRPC</a>
+      <a class="nav-link" href="frontend.html">Frontend</a>
+    </div>
+  </nav>
+  <div class="side-foot">Seed source: <code>CustomerSeed.cs</code> · password for both users is <code>123456</code>.</div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+<div class="main">
+  <div class="topbar"><button class="menu-btn" id="menuBtn" aria-label="Menu">☰</button>
+    <div><div class="crumb">Docs / <b>Test Transfers</b></div><h1>Test Transfers</h1><p>Seeded accounts and IBANs — copy one, paste it as the transfer destination in the app.</p></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="eyebrow">Alex Morgan · alex.morgan@smartbank.test</div><h2>Alex's accounts</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Alias</th><th>Type</th><th>IBAN (copy → paste in app)</th></tr></thead><tbody>
+      <tr><td>Everyday</td><td>Current</td><td><code class="inline" id="iban-alex-everyday">GB42 0000 0004 6016 1310 0000 0004</code><br><button class="btn btn-ghost" data-copy="#iban-alex-everyday">Copy</button></td></tr>
+      <tr><td>Rainy Day</td><td>Savings</td><td><code class="inline" id="iban-alex-savings">GB87 0000 0005 6016 1310 0000 0005</code><br><button class="btn btn-ghost" data-copy="#iban-alex-savings">Copy</button></td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="card"><div class="eyebrow">Jordan Lee · jordan.lee@smartbank.test</div><h2>Jordan's account</h2>
+      <div class="wrap-scroll"><table class="doc"><thead><tr><th>Alias</th><th>Type</th><th>IBAN (copy → paste in app)</th></tr></thead><tbody>
+      <tr><td>Main</td><td>Current</td><td><code class="inline" id="iban-jordan-main">GB35 0000 0006 6016 1310 0000 0006</code><br><button class="btn btn-ghost" data-copy="#iban-jordan-main">Copy</button></td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="card"><div class="eyebrow">Try it</div><h2>Suggested test flow</h2>
+      <ol class="small">
+        <li>Log in as <code class="inline">alex.morgan@smartbank.test</code> / <code class="inline">123456</code> (complete the MFA step).</li>
+        <li>Copy Jordan's <code class="inline">Main</code> IBAN above, open Transfers, pick Alex's <code class="inline">Everyday</code> as source and paste the IBAN as destination.</li>
+        <li>Submit, then check both users' statements — and <code class="inline">GET /api/notifications/log</code> for the async notification.</li>
+      </ol>
+      <div class="callout">These IBANs are <strong>stable</strong> — <code class="inline">CustomerSeed</code> always re-creates the three accounts with fixed numbers <code class="inline">1000000004 / 1000000005 / 1000000006</code> (via <code class="inline">IbanFactory</code> with sort code <code class="inline">601613</code>), then fast-forwards <code class="inline">account_number_seq</code> past them without rewinding it, so accounts you open in the app (<code class="inline">Repositories.cs:31</code>) never collide. If you wiped the DB volumes (<code class="inline">docker compose down -v</code>) the same three IBANs come back. If verification ever fails, re-check the live IBANs in the app's Accounts page or query them directly:</div>
+<pre class="code" id="ibanQuery">docker exec smartbank-postgres-customer-1 psql -U smartbank -d smartbank_customer -c "SELECT alias, iban FROM bank_accounts;"</pre>
+      <p><button class="btn btn-ghost" data-copy="#ibanQuery">Copy query</button></p>
+    </div>
+    <div class="pager"><a class="btn btn-ghost" href="how-to-run.html">← How to Run</a><a class="btn btn-primary" href="index.html">Back to start →</a></div>
+    <footer class="doc-foot">SmartBank docs · .NET 10 / Angular 20</footer>
+  </div>
+</div>
+</div>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

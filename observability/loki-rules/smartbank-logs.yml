@@ -1,0 +1,60 @@
+groups:
+  - name: smartbank-logs
+    interval: 1m
+    # Substring matches are pinned to exact log templates in code so the
+    # alerts can't silently desync: grep the message before renaming it.
+    rules:
+      - alert: SmartBankUnhandledExceptions
+        # ExceptionHandlingMiddleware: "Unhandled exception on {Method} {Path} ..."
+        expr: |
+          sum(count_over_time({service=~"smartbank.+"} |= "Unhandled exception on" [5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unhandled 500s logged by SmartBank APIs"
+          description: "ExceptionHandlingMiddleware caught unexpected exceptions in the last 5m. Join via CorrelationId/TraceId in the log line."
+
+      - alert: SmartBankTransferAuditFailures
+        # TransferFundsCommandHandler: "AUDIT transfer_failed ..."
+        expr: |
+          sum(count_over_time({service="smartbank-ledger"} |= "AUDIT transfer_failed" [5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated booked-transfer failures (audit log)"
+          description: "Ledger rejected >5 transfers in 5m. Group by ErrorCode: {service=\"smartbank-ledger\"} |= \"AUDIT transfer_failed\" | json | line_format \"{{.ErrorCode}}\"."
+
+      - alert: SmartBankOutboxFailing
+        # OutboxDispatcher: "Outbox publish failed for {OutboxId} ..."
+        expr: |
+          sum(count_over_time({service="smartbank-ledger"} |= "Outbox publish failed" [5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ledger outbox failing to publish to RabbitMQ"
+          description: "Settlement/notification backlog is growing. Check RabbitMQ, then the .dead queue depth."
+
+      - alert: SmartBankSettlementFailures
+        # Customer MoneyTransferredConsumer: "Settlement failed for {TransactionId} ..."
+        expr: |
+          sum(count_over_time({service="smartbank-customer"} |= "Settlement failed" [5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Async transfer settlement failing"
+          description: "CaptureHold/CreditPosted failing on redelivery. Check Customer logs by CorrelationId."
+
+      - alert: SmartBankDeadLetters
+        # PoisonMessagePolicy: "Dead-lettering {What} after ..."
+        expr: |
+          sum(count_over_time({service=~"smartbank.+"} |= "Dead-lettering" [5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Poison messages dead-lettered"
+          description: "A message exhausted 5 redeliveries and moved to the .dead queue. Inspect and replay or purge it."

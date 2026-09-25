@@ -1,0 +1,13 @@
+# Dev Alertmanager: alerts are visible at :9093 but notify nowhere.
+# Prod must add a real receiver here (pagerduty_config / opsgenie / webhook)
+# or pages will silently never fire.
+global: {}
+
+route:
+  receiver: dev-log
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: dev-log

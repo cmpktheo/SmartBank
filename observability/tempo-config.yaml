@@ -1,13 +1,20 @@
 server:
   http_listen_port: 3200
-  grpc_listen_port: 4317
+  # Must NOT be 4317: the distributor's OTLP gRPC receiver already binds 4317.
+  # (4317 here crashed Tempo with "bind: address already in use".)
+  grpc_listen_port: 9095
 
 distributor:
   receivers:
     otlp:
       protocols:
+        # Bind all interfaces: the collector dials tempo:4317/4318 from
+        # another container. (Defaults bind loopback, which the collector
+        # cannot reach -> "connection refused", traces dropped.)
         grpc:
+          endpoint: 0.0.0.0:4317
         http:
+          endpoint: 0.0.0.0:4318
 
 ingester:
   max_block_duration: 5m

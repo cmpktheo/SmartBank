@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SmartBank.BuildingBlocks.Infrastructure.Logging;
 using SmartBank.Identity.Application.Abstractions;
 using StackExchange.Redis;
 
@@ -22,7 +23,8 @@ public sealed class LogOtpDelivery : IOtpDelivery
     public LogOtpDelivery(ILogger<LogOtpDelivery> logger) => _logger = logger;
     public Task SendAsync(string email, string code, CancellationToken ct)
     {
-        _logger.LogInformation("OTP for {Email} is {Code}", email, code);
+        // Dev-only sink: never log the secret itself, and mask the address.
+        _logger.LogDebug("OTP dispatched to {Email}", PiiMask.MaskEmail(email));
         return Task.CompletedTask;
     }
 }

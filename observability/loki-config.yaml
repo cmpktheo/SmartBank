@@ -23,6 +23,20 @@ query_range:
         enabled: true
         max_size_mb: 100
 
+# 30d retention on local disk. Without this Loki grows unbounded;
+# without the compactor below, retention markers are never applied.
+limits_config:
+  retention_period: 720h
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+  # Required by Loki 3.x when retention_enabled: tracks which chunks must die.
+  delete_request_store: filesystem
+
 schema_config:
   configs:
     - from: 2024-01-01
@@ -34,7 +48,14 @@ schema_config:
         period: 24h
 
 ruler:
-  alertmanager_url: http://localhost:9093
+  # Local rule files mounted from ./observability/loki-rules (see compose).
+  storage:
+    type: local
+    local:
+      directory: /etc/loki/rules
+  rule_path: /loki/rules-tmp
+  alertmanager_url: http://alertmanager:9093
+  enable_api: true
 
 analytics:
   reporting_enabled: false

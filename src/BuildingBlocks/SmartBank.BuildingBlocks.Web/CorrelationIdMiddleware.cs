@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Serilog.Context;
 
 namespace SmartBank.BuildingBlocks.Web;
@@ -20,13 +21,41 @@ public sealed class CorrelationIdMiddleware
         {
             correlationId = Guid.CreateVersion7();
         }
-        context.Items["CorrelationId"] = correlationId.ToString();
-        context.Response.Headers["X-Correlation-Id"] = correlationId.ToString();
-        System.Diagnostics.Activity.Current?.SetTag("correlation.id", correlationId.ToString());
-        System.Diagnostics.Activity.Current?.SetBaggage("correlation.id", correlationId.ToString());
-        using (LogContext.PushProperty("CorrelationId", correlationId.ToString()))
+
+        var correlationString = correlationId.ToString();
+        context.Items["CorrelationId"] = correlationString;
+        context.Response.Headers["X-Correlation-Id"] = correlationString;
+        CorrelationContext.Current = correlationString;
+
+        var activity = Activity.Current;
+        activity?.SetTag("correlation.id", correlationString);
+        activity?.SetBaggage("correlation.id", correlationString);
+
+        // Join logs <-> traces even when the Loki sink maps TraceId separately:
+        // TraceId/SpanId are pushed as ordinary properties on every log line.
+        var traceId = activity?.TraceId.ToString() ?? context.TraceIdentifier;
+        var spanId = activity?.SpanId.ToString();
+
+        try
         {
-            await _next(context);
+            using (LogContext.PushProperty("CorrelationId", correlationString))
+            using (LogContext.PushProperty("TraceId", traceId))
+            using (spanId is not null ? LogContext.PushProperty("SpanId", spanId) : NullScope.Instance)
+            using (LogContext.PushProperty("RequestMethod", context.Request.Method))
+            using (LogContext.PushProperty("RequestPath", context.Request.Path.ToString()))
+            {
+                await _next(context);
+            }
         }
+        finally
+        {
+            CorrelationContext.Current = null;
+        }
+    }
+
+    private sealed class NullScope : IDisposable
+    {
+        public static readonly NullScope Instance = new();
+        public void Dispose() { }
     }
 }

@@ -52,7 +52,7 @@
         autocomplete="off"
       />
       @if (ibanStatus() === 'verified') {
-        <div data-testid="iban-verified-badge" class="sb-alert sb-alert-ok mt-2">
+        <div data-testid="iban-verified-badge" class="sb-alert sb-alert-ok mt-2 flex items-center gap-2">
           <svg lucideCheck class="size-3.5" /> Beneficiary verified — {{ holderName() }}
         </div>
       }

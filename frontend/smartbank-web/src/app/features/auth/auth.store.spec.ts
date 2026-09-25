@@ -180,6 +180,43 @@ describe('AuthStore.refresh / logout / hydrate', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
   });
 
+  it('needsRefresh is false with no session, false when fresh, true near expiry', () => {
+    const { store } = makeStore();
+    expect(store.needsRefresh()).toBe(false);
+    store.accessToken.set('a');
+    store.expiresAt.set(Date.now() + 10 * 60_000);
+    expect(store.needsRefresh()).toBe(false);
+    store.expiresAt.set(Date.now() + 30_000);
+    expect(store.needsRefresh()).toBe(true);
+    store.expiresAt.set(Date.now() - 1_000);
+    expect(store.needsRefresh()).toBe(true);
+  });
+
+  it('refreshIfNeeded returns false without a session and skips HTTP when fresh', async () => {
+    const post = vi.fn(() => of({ accessToken: 'n', refreshToken: 'nr', expiresIn: 60 }) as never);
+    const { store } = makeStore({ post: post as never });
+    expect(await store.refreshIfNeeded()).toBe(false);
+    expect(post).not.toHaveBeenCalled();
+    store.accessToken.set('a');
+    store.expiresAt.set(Date.now() + 10 * 60_000);
+    expect(await store.refreshIfNeeded()).toBe(true);
+    expect(post).not.toHaveBeenCalled();
+    expect(store.accessToken()).toBe('a');
+  });
+
+  it('refreshIfNeeded rotates an expiring session so the timer moves', async () => {
+    const post = vi.fn(() => of({ accessToken: 'n', refreshToken: 'nr', expiresIn: 900 }) as never);
+    const { store } = makeStore({ post: post as never });
+    store.accessToken.set('old');
+    store.refreshToken.set('r');
+    store.expiresAt.set(Date.now() + 10_000);
+    const before = store.expiresAt();
+    expect(await store.refreshIfNeeded()).toBe(true);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(store.accessToken()).toBe('n');
+    expect(store.expiresAt()).toBeGreaterThan(before!);
+  });
+
   it('logout clears state + storage even when backend call fails', async () => {
     const { store, router } = makeStore({ post: () => throwError(() => new Error('down')) as never });
     store.accessToken.set('a');
@@ -191,6 +228,25 @@ describe('AuthStore.refresh / logout / hydrate', () => {
     expect(store.accessToken()).toBeNull();
     expect(store.refreshToken()).toBeNull();
     expect(store.customerId()).toBeNull();
+    expect(mem.has('sb.tokens')).toBe(false);
+    expect(mem.has('sb.selectedAccountId')).toBe(false);
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
+  });
+
+  it('clearSession drops tokens + storage and routes to login', async () => {
+    const { store, router } = makeStore();
+    store.accessToken.set('a');
+    store.refreshToken.set('r');
+    store.expiresAt.set(123);
+    store.customerId.set('c');
+    mem.set('sb.tokens', '{}');
+    mem.set('sb.selectedAccountId', 'acc-1');
+    await store.clearSession();
+    expect(store.accessToken()).toBeNull();
+    expect(store.refreshToken()).toBeNull();
+    expect(store.expiresAt()).toBeNull();
+    expect(store.customerId()).toBeNull();
+    expect(store.isAuthenticated()).toBe(false);
     expect(mem.has('sb.tokens')).toBe(false);
     expect(mem.has('sb.selectedAccountId')).toBe(false);
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
@@ -212,5 +268,49 @@ describe('AuthStore.refresh / logout / hydrate', () => {
 
     mem.set('sb.tokens', '{broken');
     expect(() => store.hydrateFromSession()).not.toThrow();
+  });
+});
+
+describe('AuthStore.validateSession', () => {
+  it('false without a token and never calls the backend', async () => {
+    const { store, http } = makeStore();
+    expect(await store.validateSession()).toBe(false);
+    expect(http.get).not.toHaveBeenCalled();
+  });
+
+  it('true on 200 and syncs email/customerId', async () => {
+    const { store, http } = makeStore({
+      get: () => of({ userId: 'u', email: 'alex@x.test', customerId: 'c-1', roles: ['Customer'] }) as never,
+    });
+    store.accessToken.set('live');
+    expect(await store.validateSession()).toBe(true);
+    expect(http.get).toHaveBeenCalledWith(expect.stringContaining('/api/auth/me'));
+    expect(store.email()).toBe('alex@x.test');
+    expect(store.customerId()).toBe('c-1');
+    expect(store.accessToken()).toBe('live');
+  });
+
+  it('401 (backend wiped) clears the session and routes to login', async () => {
+    const { store, router } = makeStore({
+      get: () => throwError(() => ({ status: 401 })) as never,
+    });
+    store.accessToken.set('stale');
+    store.refreshToken.set('r');
+    mem.set('sb.tokens', '{}');
+    expect(await store.validateSession()).toBe(false);
+    expect(store.accessToken()).toBeNull();
+    expect(store.isAuthenticated()).toBe(false);
+    expect(mem.has('sb.tokens')).toBe(false);
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
+  });
+
+  it('backend down (status 0) keeps the session for a retry', async () => {
+    const { store, router } = makeStore({
+      get: () => throwError(() => ({ status: 0 })) as never,
+    });
+    store.accessToken.set('maybe-live');
+    expect(await store.validateSession()).toBe(true);
+    expect(store.accessToken()).toBe('maybe-live');
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

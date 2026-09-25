@@ -1,5 +1,5 @@
 import '@angular/compiler';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Injector, runInInjectionContext } from '@angular/core';
 import { HttpRequest } from '@angular/common/http';
 import { firstValueFrom, of } from 'rxjs';
@@ -8,8 +8,12 @@ import { AuthStore } from '../../features/auth/auth.store';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function run(token: string | null) {
-  const store = { accessToken: () => token };
+async function run(token: string | null, needsRefresh = false) {
+  const store = {
+    accessToken: () => token,
+    needsRefresh: () => needsRefresh,
+    refreshIfNeeded: async () => !!token,
+  };
   const injector = Injector.create([{ provide: AuthStore, useValue: store }]);
   const original = new HttpRequest('POST', 'http://x/api/transfers', { amount: '10' });
   let forwarded!: HttpRequest<unknown>;
@@ -50,5 +54,40 @@ describe('authInterceptor', () => {
     expect(first.forwarded.headers.get('X-Correlation-Id')).not.toBe(
       second.forwarded.headers.get('X-Correlation-Id')
     );
+  });
+
+  it('refreshes an expiring session before attaching the (rotated) token', async () => {
+    let current = 'old';
+    const accessToken = vi.fn(() => current);
+    const refreshIfNeeded = vi.fn(async () => {
+      current = 'new';
+      return true;
+    });
+    const store = { accessToken, needsRefresh: () => true, refreshIfNeeded };
+    const injector = Injector.create([{ provide: AuthStore, useValue: store }]);
+    const original = new HttpRequest('POST', 'http://x/api/transfers', { amount: '10' });
+    let forwarded!: HttpRequest<unknown>;
+    const out = await runInInjectionContext(injector, () =>
+      firstValueFrom(
+        authInterceptor(original, ((req: HttpRequest<unknown>) => {
+          forwarded = req;
+          return of('ok');
+        }) as never)
+      )
+    );
+    expect(out).toBe('ok');
+    expect(refreshIfNeeded).toHaveBeenCalledTimes(1);
+    expect(forwarded.headers.get('Authorization')).toBe('Bearer new');
+  });
+
+  it('never refreshes for the auth flow itself', async () => {
+    const refreshIfNeeded = vi.fn(async () => true);
+    const store = { accessToken: () => 't', needsRefresh: () => true, refreshIfNeeded };
+    const injector = Injector.create([{ provide: AuthStore, useValue: store }]);
+    const original = new HttpRequest('POST', 'http://x/api/auth/refresh', {});
+    await runInInjectionContext(injector, () =>
+      firstValueFrom(authInterceptor(original, (() => of('ok')) as never))
+    );
+    expect(refreshIfNeeded).not.toHaveBeenCalled();
   });
 });

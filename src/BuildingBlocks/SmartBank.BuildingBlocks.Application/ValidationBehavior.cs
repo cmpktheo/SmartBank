@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using SmartBank.BuildingBlocks.Domain;
 
 namespace SmartBank.BuildingBlocks.Application;
@@ -9,8 +10,15 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
     where TResponse : Result
 {
     private readonly IEnumerable<IValidator<TRequest>> _validators;
+    private readonly ILogger<ValidationBehavior<TRequest, TResponse>> _logger;
 
-    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators) => _validators = validators;
+    public ValidationBehavior(
+        IEnumerable<IValidator<TRequest>> validators,
+        ILogger<ValidationBehavior<TRequest, TResponse>> logger)
+    {
+        _validators = validators;
+        _logger = logger;
+    }
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
@@ -23,7 +31,13 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
                 .ToList();
             if (failures.Count != 0)
             {
+                // Warning carries property names only — never echo raw values
+                // (IBANs, narratives) into logs. Full messages go to Debug.
+                var props = string.Join(", ", failures.Select(f => f.PropertyName).Distinct());
+                _logger.LogWarning("{Request} validation failed ({Count} errors on {Properties})",
+                    typeof(TRequest).Name, failures.Count, props);
                 var message = string.Join("; ", failures.Select(f => f.ErrorMessage));
+                _logger.LogDebug("{Request} validation details: {Errors}", typeof(TRequest).Name, message);
                 var error = Error.Validation("VALIDATION", message);
                 // Return Result.Failure via reflection (supports Result and Result<T>)
                 var responseType = typeof(TResponse);

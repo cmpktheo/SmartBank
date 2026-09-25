@@ -16,6 +16,7 @@
       <a class="nav-link" href="../architecture.html">Architecture</a>
       <a class="nav-link" href="../communication.html">Communication</a>
       <a class="nav-link nav-hot" href="../how-to-run.html">How to Run</a>
+      <a class="nav-link" href="../test-transfers.html">Test Transfers</a>
     </div>
     <div><div class="nav-group-label">Services</div>
       <a class="nav-link" href="../services/gateway.html">API Gateway <span class="port">:5100</span></a>
@@ -52,7 +53,7 @@
       <tr><td>prometheus</td><td>prom/prometheus:v3.2.1</td><td>9090</td><td>Scrapes collector + /health/ready; alerts on 5xx, p95, transfer failures</td></tr>
       <tr><td>loki</td><td>grafana/loki:3.3.2</td><td>3100</td><td>Logs (Serilog sink, service label, correlation.id)</td></tr>
       <tr><td>tempo</td><td>grafana/tempo:2.7.2</td><td>3200</td><td>Traces + service-graphs</td></tr>
-      <tr><td>grafana</td><td>grafana/grafana:11.5.2</td><td>3000</td><td>Pre-provisioned Prometheus/Loki/Tempo + RED dashboard</td></tr>
+      <tr><td>grafana</td><td>grafana/grafana:11.5.2</td><td>3000</td><td>Pre-provisioned Prometheus/Loki/Tempo + dashboards: RED + Business, Audit + Logs, Microservices Usage</td></tr>
       </tbody></table></div>
       <p class="small muted">App wiring: <code class="inline">BuildingBlocks.Web/OpenTelemetryExtensions.AddSmartBankOpenTelemetry</code> + <code class="inline">SerilogExtensions.WriteToSmartBank</code>. Every request carries <code class="inline">X-Correlation-Id</code> (Angular interceptor → middleware → OTel attributes → Loki/Tempo link).</p>
     </div>

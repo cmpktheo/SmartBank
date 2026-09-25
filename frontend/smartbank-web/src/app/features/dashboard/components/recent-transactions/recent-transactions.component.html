@@ -20,26 +20,38 @@
       <table class="sb-table">
         <thead>
           <tr>
-            <th>Transaction</th>
+            <th>Reference</th>
             <th>Date</th>
+            <th>Direction</th>
+            <th>Kind</th>
+            <th>Counterparty</th>
             <th class="num-right">Amount</th>
             <th class="num-right">Balance</th>
           </tr>
         </thead>
         <tbody>
-          @for (tx of transactions(); track tx.reference) {
+          @for (tx of transactions(); track tx.transactionId) {
             <tr data-testid="recent-transaction-item">
+              <td class="text-white font-semibold">{{ tx.reference }}</td>
+              <td class="muted tnum">{{ tx.bookedAt | date: 'medium' }}</td>
               <td>
-                <strong class="text-white text-[13px]">{{ tx.reference }}</strong>
+                <span
+                  class="pill"
+                  [class.pill-green]="tx.direction === 'Credit'"
+                  [class.pill-blue]="tx.direction !== 'Credit'"
+                  >{{ tx.direction }}</span
+                >
+              </td>
+              <td>
                 @if (tx.kind === 'CardPayment') {
-                  <span class="pill pill-blue ml-2"><svg lucideCreditCard class="size-[11px]" /> Card</span>
+                  <span class="pill pill-blue"><svg lucideCreditCard class="size-[11px]" /> Card</span>
                 } @else {
-                  <span class="pill ml-2"><svg lucideArrowLeftRight class="size-[11px]" /> Transfer</span>
+                  <span class="pill"><svg lucideArrowLeftRight class="size-[11px]" /> Transfer</span>
                 }
               </td>
-              <td class="muted tnum">{{ tx.bookedAt | date: 'medium' }}</td>
+              <td class="mono muted text-[11.5px]">{{ tx.counterpartyIban ?? '—' }}</td>
               <td
-                class="num-right tnum mono"
+                class="tnum mono num-right"
                 data-testid="recent-transaction-amount"
                 [class.amount-credit]="tx.direction === 'Credit'"
               >
@@ -48,6 +60,10 @@
               <td data-testid="recent-transaction-balance" class="tnum mono num-right">
                 {{ tx.balanceAfter }} {{ tx.currency }}
               </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="muted text-center p-6">No recent activity.</td>
             </tr>
           }
         </tbody>

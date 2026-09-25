@@ -9,27 +9,27 @@
     {
       "id": 1, "type": "timeseries", "title": "Request rate by service",
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "targets": [{"expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))", "legendFormat": "{{service_name}}"}],
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count[5m]))", "legendFormat": "{{service_name}}"}],
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
     },
     {
       "id": 2, "type": "timeseries", "title": "p95 latency by route",
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[5m])))", "legendFormat": "{{http_route}}"}],
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[5m])))", "legendFormat": "{{http_route}}"}],
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
     },
     {
       "id": 3, "type": "timeseries", "title": "5xx rate",
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "targets": [{"expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m]))", "legendFormat": "{{service_name}} 5xx"}],
+      "targets": [{"refId": "A", "expr": "sum by (service_name) (rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m]))", "legendFormat": "{{service_name}} 5xx"}],
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
     },
     {
       "id": 4, "type": "timeseries", "title": "Transfers created / failed",
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [
-        {"expr": "sum by (currency) (rate(smartbank_ledger_transfers_created_total[5m]))", "legendFormat": "created {{currency}}"},
-        {"expr": "sum by (code) (rate(smartbank_ledger_transfers_failed_total[5m]))", "legendFormat": "failed {{code}}"}
+        {"refId": "A", "expr": "sum by (currency) (rate(smartbank_ledger_transfers_created_total[5m]))", "legendFormat": "created {{currency}}"},
+        {"refId": "B", "expr": "sum by (code) (rate(smartbank_ledger_transfers_failed_total[5m]))", "legendFormat": "failed {{code}}"}
       ],
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
     },
@@ -37,8 +37,8 @@
       "id": 5, "type": "timeseries", "title": "Logins / MFA verifies",
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [
-        {"expr": "sum by (result) (rate(smartbank_auth_logins_total[5m]))", "legendFormat": "login {{result}}"},
-        {"expr": "sum by (result) (rate(smartbank_auth_mfa_verifies_total[5m]))", "legendFormat": "mfa {{result}}"}
+        {"refId": "A", "expr": "sum by (result) (rate(smartbank_auth_logins_total[5m]))", "legendFormat": "login {{result}}"},
+        {"refId": "B", "expr": "sum by (result) (rate(smartbank_auth_mfa_verifies_total[5m]))", "legendFormat": "mfa {{result}}"}
       ],
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
     },
@@ -46,8 +46,8 @@
       "id": 6, "type": "timeseries", "title": ".NET GC heap + CPU time",
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [
-        {"expr": "avg by (service_name) (process_runtime_dotnet_gc_heap_size_bytes)", "legendFormat": "{{service_name}} heap"},
-        {"expr": "sum by (service_name) (rate(process_runtime_dotnet_cpu_time_seconds_total[5m]))", "legendFormat": "{{service_name}} cpu"}
+        {"refId": "A", "expr": "avg by (service_name) (process_runtime_dotnet_gc_heap_size_bytes)", "legendFormat": "{{service_name}} heap"},
+        {"refId": "B", "expr": "sum by (service_name) (rate(process_runtime_dotnet_cpu_time_seconds_total[5m]))", "legendFormat": "{{service_name}} cpu"}
       ],
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
     }

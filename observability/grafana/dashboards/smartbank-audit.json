@@ -1,0 +1,83 @@
+{
+  "title": "SmartBank Audit + Actionable Logs",
+  "uid": "smartbank-audit",
+  "tags": ["smartbank", "audit", "logs"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "AUDIT booked vs failed rate",
+      "description": "Money pointers from TransferFundsCommandHandler. Journal DB is the system of record; this is the searchable hook. Alert: SmartBankTransferAuditFailures.",
+      "datasource": {"type": "loki", "uid": "Loki"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "targets": [
+        {"refId": "A", "queryType": "range", "expr": "sum(count_over_time({service=\"smartbank-ledger\"} |= \"AUDIT transfer_booked\" [1m]))", "legendFormat": "booked"},
+        {"refId": "B", "queryType": "range", "expr": "sum(count_over_time({service=\"smartbank-ledger\"} |= \"AUDIT transfer_failed\" [1m]))", "legendFormat": "failed"}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Transfer failures by ErrorCode",
+      "description": "Parsed from the fixed AUDIT template with the pattern stage (no JSON line format required). Reconcile: group by code, then drill into panel 3.",
+      "datasource": {"type": "loki", "uid": "Loki"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "targets": [
+        {"refId": "A", "queryType": "range", "expr": "sum by (code) (count_over_time({service=\"smartbank-ledger\"} |= \"AUDIT transfer_failed\" | pattern \"AUDIT transfer_failed <code> <_>\" [1m]))", "legendFormat": "{{code}}"}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "id": 3, "type": "logs", "title": "Audit stream (booked + failed)",
+      "description": "Live money trail. Every line carries CorrelationId/TransactionId/Reference — paste the id into Tempo (trace_id) or panel 5 to follow it across services.",
+      "datasource": {"type": "loki", "uid": "Loki"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedicatedRows": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {"refId": "A", "queryType": "range", "expr": "{service=\"smartbank-ledger\"} |= \"AUDIT transfer_\""}
+      ],
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8}
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Pipeline distress signals",
+      "description": "Mirrors the Loki ruler alerts: outbox publish failures, settlement failures, dead-letters. Any non-zero line here deserves panel 5.",
+      "datasource": {"type": "loki", "uid": "Loki"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "targets": [
+        {"refId": "A", "queryType": "range", "expr": "sum(count_over_time({service=\"smartbank-ledger\"} |= \"Outbox publish failed\" [1m]))", "legendFormat": "outbox publish failed"},
+        {"refId": "B", "queryType": "range", "expr": "sum(count_over_time({service=\"smartbank-customer\"} |= \"Settlement failed\" [1m]))", "legendFormat": "settlement failed"},
+        {"refId": "C", "queryType": "range", "expr": "sum(count_over_time({service=~\"smartbank.+\"} |= \"Dead-lettering\" [1m]))", "legendFormat": "dead-lettered"}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}
+    },
+    {
+      "id": 5, "type": "logs", "title": "Needs a human",
+      "description": "Unhandled 500s, dead-letters, settlement/outbox failures across all services. Each line has CorrelationId + TraceId: Tempo trace -> Loki line, or Loki line -> Tempo trace (tracesToLogs is wired).",
+      "datasource": {"type": "loki", "uid": "Loki"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedicatedRows": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {"refId": "A", "queryType": "range", "expr": "{service=~\"smartbank.+\"} |~ \"Unhandled exception on|Dead-lettering|Settlement failed|Outbox publish failed\""}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}
+    }
+  ]
+}

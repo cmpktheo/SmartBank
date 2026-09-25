@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using SmartBank.BuildingBlocks.Domain;
 
 namespace SmartBank.BuildingBlocks.Web;
@@ -9,7 +11,7 @@ public sealed class ExceptionHandlingMiddleware
 
     public ExceptionHandlingMiddleware(RequestDelegate next) => _next = next;
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, ILogger<ExceptionHandlingMiddleware> logger)
     {
         try
         {
@@ -17,13 +19,24 @@ public sealed class ExceptionHandlingMiddleware
         }
         catch (DomainException ex)
         {
+            // Business failure: warn (not error) but keep ErrorCode + correlation searchable.
+            logger.LogWarning(ex, "Domain failure {ErrorCode} on {Method} {Path} (CorrelationId={CorrelationId})",
+                ex.Code, context.Request.Method, context.Request.Path,
+                context.Items["CorrelationId"]?.ToString());
             await WriteProblem(context, 409, ex.Code, ex.Message);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // P0: this used to be swallowed silently. Always Error with trace join keys.
+            logger.LogError(ex, "Unhandled exception on {Method} {Path} (CorrelationId={CorrelationId}, TraceId={TraceId})",
+                context.Request.Method, context.Request.Path,
+                context.Items["CorrelationId"]?.ToString(), CurrentTraceId(context));
             await WriteProblem(context, 500, "UNEXPECTED", "An unexpected error occurred.");
         }
     }
+
+    private static string CurrentTraceId(HttpContext context) =>
+        Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
 
     private static Task WriteProblem(HttpContext context, int status, string code, string detail)
     {
@@ -36,7 +49,7 @@ public sealed class ExceptionHandlingMiddleware
             detail,
             correlationId,
             code,
-            traceId = context.TraceIdentifier
+            traceId = CurrentTraceId(context)
         };
         context.Response.StatusCode = status;
         context.Response.ContentType = "application/problem+json";

@@ -17,6 +17,7 @@
       <a class="nav-link" href="architecture.html">Architecture</a>
       <a class="nav-link" href="communication.html">Communication</a>
       <a class="nav-link nav-hot" href="how-to-run.html">How to Run</a>
+      <a class="nav-link" href="test-transfers.html">Test Transfers</a>
     </div>
     <div><div class="nav-group-label">Services</div>
       <a class="nav-link" href="services/gateway.html">API Gateway <span class="port">:5100</span></a>
@@ -59,6 +60,7 @@
   participant LE as Ledger :5103
   participant CU as Customer gRPC :6102
   participant MQ as RabbitMQ
+  participant NO as Notification :5105
   UI->>GW: POST /api/transfers + Idempotency-Key
   GW->>LE: forward + JWT
   LE->>LE: Redis idempotency check
@@ -68,7 +70,7 @@
   LE->>CU: CommitFunds / CreditFunds
   LE->>MQ: publish MoneyTransferred (outbox dispatcher)
   MQ-->>CU: customer.ledger.transferred
-  MQ-->>NO as Notification: notification.ledger.transferred
+  MQ-->>NO: notification.ledger.transferred
 </pre>
     <p class="small muted">If Customer is down: <code class="inline">503 CUSTOMER_UNAVAILABLE</code>. Retries are safe — reserve is idempotent on <code class="inline">hold_id</code> and transfers are idempotent on <code class="inline">Idempotency-Key</code> (Redis). Ledger's outbox table guarantees the event is published even if the broker was briefly down.</p></div>
     <div class="card"><div class="eyebrow">Sequence · login + MFA</div><h2>POST /api/auth/login</h2>

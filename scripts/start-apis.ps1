@@ -63,6 +63,11 @@ if (-not $NoBuild) {
 New-Item -ItemType Directory -Path "$RepoRoot/.logs" -Force | Out-Null
 New-Item -ItemType Directory -Path "$RepoRoot/.pids" -Force | Out-Null
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
+# OTel: apps only export metrics/traces when this is set
+# (AddSmartBankOpenTelemetry skips the OTLP exporter otherwise,
+# which leaves Prometheus/Grafana/Tempo with no data).
+# Collector OTLP gRPC is mapped to host localhost:4317 (see docker-compose.yml).
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4317'
 # E2E OTP seam: Identity only maps GET /api/auth/e2e/otp and uses
 # InMemoryOtpSink when this is "true" (launch profiles set it, but we
 # bypass them with --no-launch-profile, so set it here explicitly).

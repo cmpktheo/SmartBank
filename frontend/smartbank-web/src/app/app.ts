@@ -93,15 +93,27 @@ export class App implements OnInit, OnDestroy {
     return p;
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     this.store.hydrateFromSession();
+    // A token in sessionStorage proves nothing: after the backend is wiped the
+    // old JWT still verifies (static dev key) while its user no longer exists.
+    // Re-check with the backend before letting the guard trust the local token.
+    if (this.store.accessToken()) await this.store.validateSession();
     this.routePath.set(this.router.url.split('?')[0]);
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e: unknown) => {
       const nav = e as { urlAfterRedirects?: string; url?: string };
       this.routePath.set((nav.urlAfterRedirects ?? nav.url ?? '').split('?')[0]);
       this.sidebarOpen.set(false);
     });
-    this.timer = setInterval(() => this.now.set(Date.now()), 1000);
+    this.timer = setInterval(() => {
+      this.now.set(Date.now());
+      // Keep the session alive while the tab is open: when the token nears
+      // expiry, rotate it in the background. setTokens() bumps expiresAt, so
+      // the sidebar countdown and subtitle automatically refresh. No HTTP
+      // happens unless needsRefresh() is true, and concurrent ticks/actions
+      // share one refresh call.
+      void this.store.refreshIfNeeded().catch(() => {});
+    }, 1000);
   }
   ngOnDestroy() {
     if (this.timer) clearInterval(this.timer);

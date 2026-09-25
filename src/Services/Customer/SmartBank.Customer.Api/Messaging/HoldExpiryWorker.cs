@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SmartBank.BuildingBlocks.Web;
 using SmartBank.Customer.Domain;
 using SmartBank.Customer.Infrastructure.Persistence;
 
@@ -43,8 +44,12 @@ public sealed class HoldExpiryWorker : BackgroundService
 
     internal async Task<int> ExpireBatchAsync(DateTimeOffset now, CancellationToken ct)
     {
-        await using var scope = _sp.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
+        // Each sweep gets its own CorrelationId + OperationName so the
+        // "Released N expired hold(s)" line is findable in Loki/Tempo.
+        using (MessagingScope.BeginOperation("HoldExpirySweep"))
+        {
+            await using var scope = _sp.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
 
         var expiredHoldIds = await db.Holds
             .Where(h => h.State == HoldState.Active && h.ExpiresAt < now)
@@ -70,5 +75,6 @@ public sealed class HoldExpiryWorker : BackgroundService
             _log.LogInformation("Released {Count} expired hold(s)", released);
         }
         return released;
+        }
     }
 }

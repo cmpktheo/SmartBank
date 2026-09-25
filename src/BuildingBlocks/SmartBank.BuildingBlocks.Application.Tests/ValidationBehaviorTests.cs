@@ -1,5 +1,7 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using SmartBank.BuildingBlocks.Application;
 using SmartBank.BuildingBlocks.Domain;
 
@@ -23,7 +25,9 @@ public sealed class ValidationBehaviorTests
     [Fact]
     public async Task Invalid_ReturnsValidationFailure()
     {
-        var behavior = new ValidationBehavior<PingCommand, Result<string>>([new PingValidator()]);
+        var behavior = new ValidationBehavior<PingCommand, Result<string>>(
+            [new PingValidator()],
+            Substitute.For<ILogger<ValidationBehavior<PingCommand, Result<string>>>>());
         var result = await behavior.Handle(new PingCommand(""), () => Task.FromResult(Result.Success<string>("x")), CancellationToken.None);
         Assert.True(result.IsFailure);
         Assert.Equal("VALIDATION", result.Error.Code);
@@ -32,7 +36,9 @@ public sealed class ValidationBehaviorTests
     [Fact]
     public async Task Valid_CallsNext()
     {
-        var behavior = new ValidationBehavior<PingCommand, Result<string>>([new PingValidator()]);
+        var behavior = new ValidationBehavior<PingCommand, Result<string>>(
+            [new PingValidator()],
+            Substitute.For<ILogger<ValidationBehavior<PingCommand, Result<string>>>>());
         var result = await behavior.Handle(new PingCommand("ok"), () => Task.FromResult(Result.Success<string>("ok")), CancellationToken.None);
         Assert.True(result.IsSuccess);
     }

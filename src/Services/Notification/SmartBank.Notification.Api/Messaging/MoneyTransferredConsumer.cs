@@ -5,8 +5,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using SmartBank.BuildingBlocks.Application.Metrics;
 using SmartBank.BuildingBlocks.EventBus;
+using SmartBank.BuildingBlocks.Infrastructure.Logging;
 using SmartBank.BuildingBlocks.Infrastructure.Messaging;
+using SmartBank.BuildingBlocks.Web;
 
 namespace SmartBank.Notification.Api.Messaging;
 
@@ -55,46 +58,60 @@ public sealed class MoneyTransferredConsumer : BackgroundService
         var evt = MoneyTransferredIntegrationEvent.FromPayload(body);
         if (evt is null)
         {
+            _log.LogWarning("Dropping unparseable MoneyTransferred notification ({Bytes} bytes)", ea.Body.Length);
             await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
             return;
         }
 
-        try
+        using (MessagingScope.Begin(evt.CorrelationId, evt.EventId, evt.TransactionId,
+                   MoneyTransferredIntegrationEvent.TypeName, PoisonMessagePolicy.ReadHeader(ea, "traceparent")))
         {
-            await using var scope = _sp.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
-            if (await db.Log.AnyAsync(x => x.EventId == evt.EventId, ct))
+            try
             {
-                await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
-                return;
-            }
+                await using var scope = _sp.CreateAsyncScope();
+                var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+                if (await db.Log.AnyAsync(x => x.EventId == evt.EventId, ct))
+                {
+                    _log.LogInformation("Duplicate notification for {EventId} ignored (CorrelationId={CorrelationId})",
+                        evt.EventId, evt.CorrelationId);
+                    await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
+                    return;
+                }
 
-            db.Log.Add(new NotificationEntry
+                db.Log.Add(new NotificationEntry
+                {
+                    EventId = evt.EventId,
+                    Channel = "Email",
+                    Template = "TransferBooked",
+                    Recipient = evt.DestinationIban,
+                    Subject = $"Transfer {evt.Reference} booked",
+                    Body = NotificationDbContext.TransferBody(evt.Reference,
+                        evt.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                        evt.Currency, evt.SourceIban, evt.DestinationIban, evt.OccurredAt.ToString("O")),
+                    Payload = body,
+                });
+                await db.SaveChangesAsync(ct);
+                SmartBankMeters.NotificationSent("TransferBooked", "Email");
+                // DB keeps the full payload for audit; the log line carries
+                // the masked IBAN only — enough to find the row, safe for Loki.
+                _log.LogInformation("Logged transfer notification {TransactionId} to {Recipient} (CorrelationId={CorrelationId})",
+                    evt.TransactionId, PiiMask.MaskIban(evt.DestinationIban), evt.CorrelationId);
+                await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
             {
-                EventId = evt.EventId,
-                Channel = "Email",
-                Template = "TransferBooked",
-                Recipient = evt.DestinationIban,
-                Subject = $"Transfer {evt.Reference} booked",
-                Body = NotificationDbContext.TransferBody(evt.Reference,
-                    evt.Amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-                    evt.Currency, evt.SourceIban, evt.DestinationIban, evt.OccurredAt.ToString("O")),
-                Payload = body,
-            });
-            await db.SaveChangesAsync(ct);
-            _log.LogInformation("Logged transfer notification {TransactionId}", evt.TransactionId);
-            await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
-        }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            // Unique(EventId) race between two deliveries -> already logged.
-            _log.LogInformation("Duplicate notification for {EventId} ignored", evt.EventId);
-            await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Notification handling failed for {TransactionId}; requeueing", evt.TransactionId);
-            await channel.BasicNackAsync(ea.DeliveryTag, false, requeue: true, ct);
+                // Unique(EventId) race between two deliveries -> already logged.
+                _log.LogInformation("Duplicate notification for {EventId} ignored (CorrelationId={CorrelationId})",
+                    evt.EventId, evt.CorrelationId);
+                await channel.BasicAckAsync(ea.DeliveryTag, false, ct);
+            }
+            catch (Exception ex)
+            {
+                _log.LogError(ex, "Notification handling failed for {TransactionId} (CorrelationId={CorrelationId}, delivery {Delivery})",
+                    evt.TransactionId, evt.CorrelationId, PoisonMessagePolicy.DeliveryCount(ea) + 1);
+                await PoisonMessagePolicy.NackOrDeadLetterAsync(
+                    channel, ea, _log, $"notification {evt.TransactionId}", ct);
+            }
         }
     }
 }

@@ -16,12 +16,24 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
-        var response = await next();
-        sw.Stop();
-        if (response.IsSuccess)
-            _logger.LogInformation("{Request} succeeded in {ElapsedMs}ms", typeof(TRequest).Name, sw.ElapsedMilliseconds);
-        else
-            _logger.LogWarning("{Request} failed with {Code} in {ElapsedMs}ms", typeof(TRequest).Name, response.Error.Code, sw.ElapsedMilliseconds);
-        return response;
+        try
+        {
+            var response = await next();
+            sw.Stop();
+            if (response.IsSuccess)
+                _logger.LogInformation("{Request} succeeded in {ElapsedMs}ms", typeof(TRequest).Name, sw.ElapsedMilliseconds);
+            else
+                _logger.LogWarning("{Request} failed with {ErrorCode} in {ElapsedMs}ms: {ErrorMessage}",
+                    typeof(TRequest).Name, response.Error.Code, sw.ElapsedMilliseconds, response.Error.Message);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            // P0: unhandled handler exceptions used to bypass logging entirely.
+            sw.Stop();
+            _logger.LogError(ex, "{Request} threw {ExceptionType} after {ElapsedMs}ms",
+                typeof(TRequest).Name, ex.GetType().Name, sw.ElapsedMilliseconds);
+            throw;
+        }
     }
 }

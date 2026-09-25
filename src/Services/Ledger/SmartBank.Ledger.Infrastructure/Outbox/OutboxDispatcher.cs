@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SmartBank.BuildingBlocks.EventBus;
+using SmartBank.BuildingBlocks.Web;
 using SmartBank.Ledger.Infrastructure.Persistence;
 
 namespace SmartBank.Ledger.Infrastructure.Outbox;
@@ -66,19 +67,23 @@ public sealed class OutboxDispatcher : BackgroundService
         foreach (var msg in batch)
         {
             ct.ThrowIfCancellationRequested();
-            try
+            // Restore correlation so every publish/failure log joins the originating request.
+            using (MessagingScope.Begin(msg.CorrelationId, msg.Id, messageType: msg.Type))
             {
-                await publisher.PublishAsync(msg.Type, msg.Payload, msg.CorrelationId, ct).ConfigureAwait(false);
-                msg.ProcessedAt = DateTimeOffset.UtcNow;
-                msg.LastError = null;
-                done++;
-            }
-            catch (Exception ex)
-            {
-                msg.Attempts++;
-                msg.LastError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
-                _log.LogWarning(ex, "Outbox publish failed for {OutboxId} ({Type}) attempt {Attempts}",
-                    msg.Id, msg.Type, msg.Attempts);
+                try
+                {
+                    await publisher.PublishAsync(msg.Type, msg.Payload, msg.CorrelationId, ct).ConfigureAwait(false);
+                    msg.ProcessedAt = DateTimeOffset.UtcNow;
+                    msg.LastError = null;
+                    done++;
+                }
+                catch (Exception ex)
+                {
+                    msg.Attempts++;
+                    msg.LastError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
+                    _log.LogWarning(ex, "Outbox publish failed for {OutboxId} ({Type}) attempt {Attempts} (CorrelationId={CorrelationId})",
+                        msg.Id, msg.Type, msg.Attempts, msg.CorrelationId);
+                }
             }
         }
         await db.SaveChangesAsync(ct).ConfigureAwait(false);

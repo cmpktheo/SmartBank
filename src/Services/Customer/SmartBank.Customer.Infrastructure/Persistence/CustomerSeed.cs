@@ -16,6 +16,17 @@ public static class CustomerSeed
     public static readonly Guid AlexCustomerId = Guid.Parse("11111111-1111-7111-1111-111111111111");
     public static readonly Guid JordanCustomerId = Guid.Parse("22222222-2222-7222-2222-222222222222");
 
+    // Fixed account numbers -> stable IBANs (IbanFactory with sort code 601613):
+    //   1000000004 -> GB42 0000 0004 6016 1310 0000 0004 (Alex Everyday)
+    //   1000000005 -> GB87 0000 0005 6016 1310 0000 0005 (Alex Rainy Day)
+    //   1000000006 -> GB35 0000 0006 6016 1310 0000 0006 (Jordan Main)
+    // Never use nextval() for seed accounts: the sequence is never reset and every
+    // account opened in the app consumes a number, so nextval() would shift these
+    // IBANs on every restart.
+    public const long AlexEverydayAccountNumber = 1000000004;
+    public const long AlexSavingsAccountNumber = 1000000005;
+    public const long JordanMainAccountNumber = 1000000006;
+
     public static async Task RunAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
@@ -34,30 +45,37 @@ public static class CustomerSeed
         if (!await db.BankAccounts.AnyAsync())
         {
             var factory = new IbanFactory("601613");
-            await AddAccount(db, AlexEverydayAccountId, alexId, "Everyday", AccountType.Current, 25000m, factory);
-            await AddAccount(db, AlexSavingsAccountId, alexId, "Rainy Day", AccountType.Savings, 18000m, factory);
-            await AddAccount(db, JordanMainAccountId, jordanId, "Main", AccountType.Current, 15000m, factory);
+            await AddAccount(db, AlexEverydayAccountId, alexId, "Everyday", AccountType.Current, 25000m, AlexEverydayAccountNumber, factory);
+            await AddAccount(db, AlexSavingsAccountId, alexId, "Rainy Day", AccountType.Savings, 18000m, AlexSavingsAccountNumber, factory);
+            await AddAccount(db, JordanMainAccountId, jordanId, "Main", AccountType.Current, 15000m, JordanMainAccountNumber, factory);
         }
         else
         {
             var factory = new IbanFactory("601613");
-            await db.Holds.ExecuteDeleteAsync();
-            foreach (var accountId in new[] { AlexEverydayAccountId, AlexSavingsAccountId, JordanMainAccountId })
+            var seedIds = new[] { AlexEverydayAccountId, AlexSavingsAccountId, JordanMainAccountId };
+            var seedIdsNullable = seedIds.Select(id => (Guid?)id).ToArray();
+            await db.Holds.Where(h => seedIdsNullable.Contains(EF.Property<Guid?>(h, "BankAccountId"))).ExecuteDeleteAsync();
+            foreach (var accountId in seedIds)
             {
                 var existing = await db.BankAccounts.FirstOrDefaultAsync(a => a.Id == accountId);
                 if (existing != null) db.BankAccounts.Remove(existing);
             }
             await db.SaveChangesAsync();
-            await AddAccount(db, AlexEverydayAccountId, alexId, "Everyday", AccountType.Current, 25000m, factory);
-            await AddAccount(db, AlexSavingsAccountId, alexId, "Rainy Day", AccountType.Savings, 18000m, factory);
-            await AddAccount(db, JordanMainAccountId, jordanId, "Main", AccountType.Current, 15000m, factory);
+            await AddAccount(db, AlexEverydayAccountId, alexId, "Everyday", AccountType.Current, 25000m, AlexEverydayAccountNumber, factory);
+            await AddAccount(db, AlexSavingsAccountId, alexId, "Rainy Day", AccountType.Savings, 18000m, AlexSavingsAccountNumber, factory);
+            await AddAccount(db, JordanMainAccountId, jordanId, "Main", AccountType.Current, 15000m, JordanMainAccountNumber, factory);
         }
+        // Keep user-opened accounts collision-free: never rewind the sequence, only
+        // fast-forward past the reserved seed numbers.
+        // NOTE: one-time `docker compose down -v` + reseed is required if an existing
+        // dev DB already used 1000000004/5/6 for user-opened accounts (unique IBAN).
+        await db.Database.ExecuteSqlRawAsync(
+            "SELECT setval('account_number_seq', GREATEST((SELECT last_value FROM account_number_seq), 1000000006::BIGINT), true)");
     }
 
-    private static async Task AddAccount(CustomerDbContext db, Guid accountId, Guid customerId, string alias, AccountType type, decimal posted, IbanFactory factory)
+    private static async Task AddAccount(CustomerDbContext db, Guid accountId, Guid customerId, string alias, AccountType type, decimal posted, long accountNumber, IbanFactory factory)
     {
-        var number = Convert.ToInt64(await db.Database.SqlQueryRaw<long>("SELECT nextval('account_number_seq') AS \"Value\"").FirstAsync());
-        var acc = BankAccount.Open(accountId, customerId, factory.Create(number), alias, type, Currency.GBP, DateTimeOffset.UtcNow);
+        var acc = BankAccount.Open(accountId, customerId, factory.Create(accountNumber), alias, type, Currency.GBP, DateTimeOffset.UtcNow);
         acc.SetPostedForSeed(Money.Of(posted, Currency.GBP));
         db.BankAccounts.Add(acc);
         await db.SaveChangesAsync();

@@ -22,6 +22,29 @@ export class AuthStore {
 
   isAuthenticated = computed(() => !!this.accessToken());
   private refreshing: Promise<void> | null = null;
+  /** Refresh proactively this far ahead of expiry so user actions extend the session. */
+  readonly refreshSkewMs = 60_000;
+
+  /** True when we hold a token that will expire within the skew window (or already expired). */
+  needsRefresh(now = Date.now()): boolean {
+    const token = this.accessToken();
+    const exp = this.expiresAt();
+    if (!token || exp === null) return false;
+    return exp - now <= this.refreshSkewMs;
+  }
+
+  /**
+   * Refresh the session if the access token is expiring soon.
+   * Returns true when the session is usable afterwards (already fresh or refreshed),
+   * false when there is no session or the refresh failed (session cleared).
+   * Concurrent callers share a single backend call via `refreshing`.
+   */
+  async refreshIfNeeded(now = Date.now()): Promise<boolean> {
+    if (!this.accessToken()) return false;
+    if (!this.needsRefresh(now)) return true;
+    await this.refresh();
+    return !!this.accessToken();
+  }
 
   async login(email: string, password: string) {
     this.loading.set(true);
@@ -128,6 +151,11 @@ export class AuthStore {
     } catch {
       /* ignore */
     }
+    await this.clearSession();
+  }
+
+  /** Drop the local session without calling the backend (token already dead/invalid). */
+  async clearSession() {
     this.accessToken.set(null);
     this.refreshToken.set(null);
     this.expiresAt.set(null);
@@ -135,6 +163,33 @@ export class AuthStore {
     sessionStorage.removeItem('sb.tokens');
     sessionStorage.removeItem('sb.selectedAccountId');
     await this.router.navigate(['/auth/login'], { replaceUrl: true });
+  }
+
+  /**
+   * Re-validate a hydrated session against the backend. Access tokens are
+   * stateless (signature + expiry only) and the dev signing key is static, so a
+   * token issued before the backend was wiped still verifies. /api/auth/me also
+   * looks the user up in the Identity DB, so it 401s when the user is gone.
+   * Only 401/403 drops the session — any other failure (backend down) keeps it
+   * so a retry can succeed.
+   */
+  async validateSession(): Promise<boolean> {
+    if (!this.accessToken()) return false;
+    try {
+      const me = await firstValueFrom(
+        this.http.get<{ email?: string; customerId?: string }>(`${environment.apiBaseUrl}/api/auth/me`)
+      );
+      if (me?.email) this.email.set(me.email);
+      if (me?.customerId) this.customerId.set(me.customerId);
+      return true;
+    } catch (e: unknown) {
+      const status = (e as { status?: number })?.status;
+      if (status === 401 || status === 403) {
+        await this.clearSession();
+        return false;
+      }
+      return true;
+    }
   }
 
   hydrateFromSession() {
