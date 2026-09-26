@@ -18,7 +18,7 @@ public sealed class OtpChallengeTests
         var userId = Guid.CreateVersion7();
         var now = DateTimeOffset.UtcNow;
         var challenge = OtpChallenge.Create(userId, "123456", now);
-        challenge.Verify("123456", now.AddMinutes(1)).IsSuccess.Should().BeTrue();
+        challenge.Verify("123456", now.AddSeconds(30)).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public sealed class OtpChallengeTests
         var userId = Guid.CreateVersion7();
         var now = DateTimeOffset.UtcNow;
         var challenge = OtpChallenge.Create(userId, "123456", now);
-        var result = challenge.Verify("000000", now.AddMinutes(1));
+        var result = challenge.Verify("000000", now.AddSeconds(30));
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("IDENTITY_MFA_INVALID");
         challenge.Attempts.Should().Be(1);
@@ -41,7 +41,7 @@ public sealed class OtpChallengeTests
         var challenge = OtpChallenge.Create(userId, "123456", now);
         SmartBank.BuildingBlocks.Domain.Result last = SmartBank.BuildingBlocks.Domain.Result.Success();
         for (var i = 0; i < 5; i++)
-            last = challenge.Verify("000000", now.AddMinutes(1));
+            last = challenge.Verify("000000", now.AddSeconds(30));
         last.Error.Code.Should().Be("IDENTITY_MFA_LOCKED");
     }
 }

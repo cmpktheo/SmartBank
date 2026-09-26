@@ -141,7 +141,8 @@ public sealed class CustomerTests
     {
         var factory = new IbanFactory("601613");
         var iban = factory.Create(1000000001);
-        iban.Value.Should().StartWith("10");
+        iban.Value.Should().StartWith("GB");
+        iban.Value.Should().HaveLength(28);
         Iban.PassesMod97(iban.Value).Should().BeTrue();
     }
 
@@ -149,7 +150,8 @@ public sealed class CustomerTests
     public void IbanFactory_DefaultFactory_GeneratesNumericIban()
     {
         var iban = new IbanFactory().Create(1000000002);
-        iban.Value.Should().StartWith("10");
+        iban.Value.Should().StartWith("GB");
+        iban.Value.Should().HaveLength(28);
         Iban.PassesMod97(iban.Value).Should().BeTrue();
     }
 }
