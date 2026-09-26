@@ -30,8 +30,8 @@ function makePage(opts?: {
     void id;
     return of(p);
   });
-  const statementCsvUrl = vi.fn(() => 'http://x/statement.csv?format=csv');
-  const ledger = { getTransactions, statementCsvUrl };
+  const getStatementCsv = vi.fn(() => of('BookedAt,Reference\n'));
+  const ledger = { getTransactions, getStatementCsv };
   const router = { navigate: vi.fn(() => Promise.resolve(true)) };
   const injector = Injector.create([
     { provide: LedgerService, useValue: ledger },
@@ -39,11 +39,19 @@ function makePage(opts?: {
     { provide: AccountSelectionStore, useValue: selection },
   ]);
   const page = runInInjectionContext(injector, () => new AccountDetailPage());
-  return { page, ledger, router, getTransactions, statementCsvUrl };
+  return { page, ledger, router, getTransactions, getStatementCsv };
 }
 
 beforeEach(() => {
-  vi.stubGlobal('window', { open: vi.fn() });
+  const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
+  vi.stubGlobal('document', {
+    createElement: vi.fn(() => anchor),
+    body: { appendChild: vi.fn(), removeChild: vi.fn() },
+  });
+  vi.stubGlobal('URL', {
+    createObjectURL: vi.fn(() => 'blob:csv'),
+    revokeObjectURL: vi.fn(),
+  });
 });
 
 describe('AccountDetailPage init', () => {
@@ -138,13 +146,20 @@ describe('AccountDetailPage loadMore', () => {
 });
 
 describe('AccountDetailPage exportCsv', () => {
-  it('opens the csv url in a new tab', () => {
-    const { page, statementCsvUrl } = makePage();
+  it('downloads the csv via an anchor with a statement filename', async () => {
+    const { page, getStatementCsv } = makePage();
     page.id.set('acc-7');
     page.from.set('2026-01-01');
     page.to.set('2026-03-01');
-    page.exportCsv();
-    expect(statementCsvUrl).toHaveBeenCalledWith('acc-7', '2026-01-01', '2026-03-01');
-    expect(window.open).toHaveBeenCalledWith('http://x/statement.csv?format=csv', '_blank');
+    await page.exportCsv();
+    expect(getStatementCsv).toHaveBeenCalledWith('acc-7', '2026-01-01', '2026-03-01');
+    const anchor = vi.mocked(document.createElement).mock.results[0]!.value as {
+      href: string;
+      download: string;
+      click: ReturnType<typeof vi.fn>;
+    };
+    expect(anchor.href).toBe('blob:csv');
+    expect(anchor.download).toBe('statement-acc-7.csv');
+    expect(anchor.click).toHaveBeenCalledTimes(1);
   });
 });

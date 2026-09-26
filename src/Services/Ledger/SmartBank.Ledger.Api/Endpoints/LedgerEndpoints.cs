@@ -107,7 +107,7 @@ public static class StatementEndpoints
                     Csv(j.CounterpartyIban), Csv(j.Narrative),
                     balances.TryGetValue(line.Id, out var b) ? b.ToString("0.00", CultureInfo.InvariantCulture) : string.Empty));
             }
-            return Results.Text(sb.ToString(), "text/csv");
+            return Results.File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", $"statement-{accountId}.csv");
         }).RequireAuthorization();
     }
 

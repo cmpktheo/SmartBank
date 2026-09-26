@@ -12,7 +12,8 @@ test('E1 direct detail without selection redirects to /accounts', async ({ page,
   // Clear selected account so guard logic kicks in
   await page.evaluate(() => sessionStorage.removeItem('sb.selectedAccountId'));
   await page.goto('/accounts/detail');
-  await expect(page).toHaveURL(/accounts/);
+  // Exact /accounts match: a bare /accounts/ pattern also matches /accounts/detail.
+  await expect(page).toHaveURL(/\/accounts\/?(\?.*)?$/);
 });
 
 test('E2 kind filter CardPayment keeps valid table state', async ({ page, request }) => {

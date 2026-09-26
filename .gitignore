@@ -70,6 +70,10 @@ coverage/
 .logs/
 .pids/
 
+# Playwright test output (screenshots, traces, .last-run.json)
+frontend/smartbank-web/test-results/
+playwright-report/
+
 # Vim temporary swap files
 *.swp
 

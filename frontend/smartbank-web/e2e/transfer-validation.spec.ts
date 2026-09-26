@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TransferPage, loginAsAlex, getInternalDestinationIban } from './poms/pages';
+import { TransferPage, loginAsAlex, getInternalDestinationIban, getTransferPair } from './poms/pages';
 
 test('F1 empty amount disables Review', async ({ page, request }) => {
   await loginAsAlex(page, request);
@@ -13,8 +13,9 @@ test('F2 Review opens modal, Cancel closes without success', async ({ page, requ
   await loginAsAlex(page, request);
   const t = new TransferPage(page);
   await t.goto();
-  const dest = await getInternalDestinationIban(request, page);
-  await t.fillInternal(dest, '10.00');
+  const { destIban, sourceId } = await getTransferPair(request, page, 10);
+  await t.selectSourceById(sourceId);
+  await t.fillInternal(destIban, '10.00');
   await expect(t.verified()).toBeVisible();
   await t.submit().click();
   await expect(page.getByTestId('transfer-confirm-modal')).toBeVisible();
@@ -46,8 +47,9 @@ test('F5 narrative accepted, confirm dialog echoes amount', async ({ page, reque
   await loginAsAlex(page, request);
   const t = new TransferPage(page);
   await t.goto();
-  const dest = await getInternalDestinationIban(request, page);
-  await t.fillInternal(dest, '5.00');
+  const { destIban, sourceId } = await getTransferPair(request, page, 5);
+  await t.selectSourceById(sourceId);
+  await t.fillInternal(destIban, '5.00');
   await page.getByTestId('transfer-narrative-input').fill('Invoice #4922');
   await expect(t.verified()).toBeVisible();
   await t.submit().click();

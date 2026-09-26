@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { DashboardPage, TransferPage, loginAsAlex, getInternalDestinationIban } from './poms/pages';
+import { DashboardPage, TransferPage, loginAsAlex, getTransferPair } from './poms/pages';
 
 function parseBalance(text: string): number {
   const n = text.replace(/[^0-9.,-]/g, '').replace(/,/g, '');
@@ -11,12 +11,14 @@ test.describe.serial('transfers', () => {
     await loginAsAlex(page, request);
     const dashboard = new DashboardPage(page);
     await dashboard.expectLoaded();
-    const b0 = parseBalance(await dashboard.balanceText(0));
 
-    const destIban = await getInternalDestinationIban(request, page);
     const transfer = new TransferPage(page);
     await dashboard.quickTransfer().click();
     await expect(page).toHaveURL(/transfers/);
+    // Don't rely on the default source: empty E2E-* accounts from other
+    // suites may sort first, and the API rejects cross-currency bookings.
+    const { destIban, sourceId, sourceIndex, sourceBalance: b0 } = await getTransferPair(request, page, 100);
+    await transfer.selectSourceById(sourceId);
     await transfer.fillInternal(destIban, '100.00');
     await expect(transfer.verified()).toBeVisible();
     await transfer.submitAndConfirm();
@@ -25,7 +27,7 @@ test.describe.serial('transfers', () => {
 
     await page.goto('/dashboard');
     await dashboard.expectLoaded();
-    const b1 = parseBalance(await dashboard.balanceText(0));
+    const b1 = parseBalance(await dashboard.balanceText(sourceIndex));
     expect(b1).toBeCloseTo(b0 - 100, 2);
   });
 

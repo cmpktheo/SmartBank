@@ -15,7 +15,7 @@ import { LucideMenu, LucideArrowUpRight, LucideChevronRight } from '@lucide/angu
         <p class="sb-subtitle">{{ subtitle() }}</p>
       </div>
       <div class="sb-top-actions">
-        <a data-testid="quick-transfer-btn" routerLink="/transfers" class="btn-primary"><svg lucideArrowUpRight class="size-4" /> <span>Send money</span></a>
+        <a data-testid="topbar-transfer-btn" routerLink="/transfers" class="btn-primary"><svg lucideArrowUpRight class="size-4" /> <span>Send money</span></a>
         <div class="sb-user-chip">
           <div class="sb-avatar" aria-hidden="true">{{ initials() }}</div>
           <div class="leading-tight">

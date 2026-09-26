@@ -24,7 +24,7 @@ test('A2 sidebar navigates through all sections', async ({ page, request }) => {
 test('A3 topbar quick-transfer goes to /transfers', async ({ page, request }) => {
   await loginAsAlex(page, request);
   await page.goto('/dashboard');
-  await page.getByTestId('quick-transfer-btn').first().click();
+  await page.getByTestId('topbar-transfer-btn').click();
   await expect(page).toHaveURL(/transfers/);
 });
 

@@ -50,6 +50,12 @@ export class LedgerService {
     return `${environment.apiBaseUrl}/api/ledger/accounts/${accountId}/statement.csv?${params}`;
   }
 
+  /** CSV content via authenticated XHR (auth interceptor attaches Bearer).
+   *  A plain window.open() can't send the header, so it 401s. */
+  getStatementCsv(accountId: string, from: string, to: string): Observable<string> {
+    return this.http.get(this.statementCsvUrl(accountId, from, to), { responseType: 'text' });
+  }
+
   /** Prefer the Current account, fall back to the first one. Shared by dashboard + detail. */
   preferCurrentAccount(accounts: AccountSummary[]): AccountSummary | undefined {
     return accounts.find((a) => a.type === 'Current') ?? accounts[0];

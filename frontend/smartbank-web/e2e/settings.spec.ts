@@ -6,7 +6,7 @@ test('H1 settings shows email, customer id, expiry and MFA enforced', async ({ p
   const settings = new SettingsPage(page);
   await settings.goto();
   await expect(page.getByText('Signed in as')).toBeVisible();
-  await expect(page.getByText('alex.morgan@smartbank.test')).toBeVisible();
+  await expect(page.getByRole('main').getByText('alex.morgan@smartbank.test')).toBeVisible();
   await expect(page.getByText('Customer ID')).toBeVisible();
   await expect(page.getByText('Session expires')).toBeVisible();
   await expect(page.getByText('Enforced')).toBeVisible();

@@ -149,7 +149,15 @@ export class AccountDetailPage implements OnInit {
     }
   }
 
-  exportCsv() {
-    window.open(this.ledger.statementCsvUrl(this.id(), this.from(), this.to()), '_blank');
+  async exportCsv() {
+    const csv = await firstValueFrom(this.ledger.getStatementCsv(this.id(), this.from(), this.to()));
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `statement-${this.id()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }

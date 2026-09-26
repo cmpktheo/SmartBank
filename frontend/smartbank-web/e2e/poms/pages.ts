@@ -114,6 +114,7 @@ export class AccountDetailPage {
 export class TransferPage {
   constructor(private readonly page: Page) {}
   source = () => this.page.getByTestId('transfer-source-select');
+  sourceOptions = () => this.page.locator('[data-testid^="transfer-source-option-"]');
   iban = () => this.page.getByTestId('transfer-iban-input');
   amount = () => this.page.getByTestId('transfer-amount-input');
   submit = () => this.page.getByTestId('transfer-submit-btn');
@@ -133,6 +134,16 @@ export class TransferPage {
     await this.submit().click();
     await expect(this.page.getByTestId('transfer-confirm-modal')).toBeVisible();
     await this.confirm().click();
+  }
+
+  /**
+   * Selects a source account by id. Needed because other suites create empty
+   * E2E-* accounts that may sort first, so the default selection is not
+   * reliable (empty balance disables submit).
+   */
+  async selectSourceById(id: string) {
+    await this.source().click();
+    await this.page.getByTestId(`transfer-source-option-${id}`).click();
   }
 }
 
@@ -168,6 +179,10 @@ export async function loginAsAlex(page: Page, request: APIRequestContext) {
   const login = new LoginPage(page);
   await login.goto();
   await login.login('alex.morgan@smartbank.test', '123456');
+  // Wait for the login POST to complete (frontend navigates to MFA only on
+  // mfaRequired). Fetching the OTP earlier races the login and returns the
+  // previous code from the backend sink, which verify then rejects.
+  await expect(page).toHaveURL(/auth\/mfa/);
   const otp = await request.get('http://localhost:5100/api/auth/e2e/otp', {
     params: { email: 'alex.morgan@smartbank.test' },
   });
@@ -177,9 +192,9 @@ export async function loginAsAlex(page: Page, request: APIRequestContext) {
   await expect(page).toHaveURL(/dashboard/);
 }
 
-/** Returns an IBAN belonging to a *different* account than the first one, for internal transfers. */
-export async function getInternalDestinationIban(request: APIRequestContext, page: Page): Promise<string> {
-  const token = await page.evaluate(() => {
+/** Reads the logged-in access token from session storage for API calls. */
+export async function getApiToken(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
     try {
       const raw = sessionStorage.getItem('sb.tokens');
       return raw ? (JSON.parse(raw).accessToken as string) : null;
@@ -187,6 +202,23 @@ export async function getInternalDestinationIban(request: APIRequestContext, pag
       return null;
     }
   });
+}
+
+export interface ApiAccount {
+  id: string;
+  alias?: string;
+  iban?: string;
+  ibanFormatted?: string;
+  currency?: string;
+  availableBalance?: string;
+}
+
+/** Lists accounts via the API in UI order (dashboard cards and source options follow it). */
+export async function getApiAccounts(
+  request: APIRequestContext,
+  page: Page
+): Promise<ApiAccount[]> {
+  const token = await getApiToken(page);
   const res = await request.get('http://localhost:5100/api/accounts', {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -194,8 +226,56 @@ export async function getInternalDestinationIban(request: APIRequestContext, pag
   if (!Array.isArray(accounts) || accounts.length < 2) {
     throw new Error('Need >=2 accounts for internal transfer test — seed provides Alex(2)+Jordan(1)');
   }
+  return accounts as ApiAccount[];
+}
+
+function parseMoney(v: string | undefined): number {
+  return Number((v ?? '').replace(/,/g, '')) || 0;
+}
+
+/**
+ * Picks a booking-compatible pair from the caller's own accounts: same
+ * currency (the API rejects cross-currency transfers), source holding at
+ * least `amount` (the UI disables submit on insufficient funds), source and
+ * destination different accounts. `sourceIndex` matches the dashboard card
+ * index (same API order) for balance assertions.
+ */
+export async function getTransferPair(
+  request: APIRequestContext,
+  page: Page,
+  amount: number
+): Promise<{ destIban: string; sourceId: string; sourceIndex: number; sourceBalance: number }> {
+  const accounts = await getApiAccounts(request, page);
+  const groups = new Map<string, ApiAccount[]>();
+  for (const a of accounts) {
+    const key = a.currency ?? '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(a);
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const source = group.find((a) => parseMoney(a.availableBalance) >= amount);
+    const dest = source && group.find((a) => a.id !== source.id);
+    const destIban = dest && (dest.iban ?? dest.ibanFormatted);
+    if (source && dest && destIban) {
+      return {
+        destIban,
+        sourceId: source.id,
+        sourceIndex: accounts.findIndex((a) => a.id === source.id),
+        sourceBalance: parseMoney(source.availableBalance),
+      };
+    }
+  }
+  throw new Error(
+    `No same-currency pair found where the source holds at least ${amount}`
+  );
+}
+
+/** Returns an IBAN belonging to a *different* account than the first one, for internal transfers. */
+export async function getInternalDestinationIban(request: APIRequestContext, page: Page): Promise<string> {
+  const accounts = await getApiAccounts(request, page);
   // Prefer Jordan's account when present, else any non-first account.
   const jordan = accounts.find((a: { alias?: string }) => /jordan/i.test(a.alias ?? ''));
   const dest = jordan ?? accounts[1];
-  return (dest.iban ?? dest.ibanFormatted ?? dest.destinationIban) as string;
+  return (dest.iban ?? dest.ibanFormatted ?? (dest as { destinationIban?: string }).destinationIban) as string;
 }
