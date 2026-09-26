@@ -6,6 +6,12 @@
     "start": "ng serve --port 4200",
     "build": "ng build --configuration=production",
     "test": "vitest run",
+    "test:core": "vitest run src/app/core/currency.spec.ts src/app/core/iban.spec.ts",
+    "test:interceptors": "vitest run src/app/core/interceptors/auth.interceptor.spec.ts src/app/core/interceptors/error.interceptor.spec.ts",
+    "test:auth": "vitest run src/app/features/auth/auth.store.spec.ts src/app/features/auth/auth.guard.spec.ts",
+    "test:accounts": "vitest run src/app/features/accounts/data-access/ledger.service.spec.ts src/app/features/accounts/account-detail.page.spec.ts",
+    "test:transfers": "vitest run src/app/features/transfers/transfer.page.spec.ts",
+    "test:cards": "vitest run src/app/features/cards/cards.page.spec.ts",
     "e2e": "playwright test"
   },
   "dependencies": {

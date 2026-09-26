@@ -72,7 +72,7 @@
       <div>
         <label class="sb-label" for="t-amt">Amount ({{ sourceCurrency() }})</label>
         <div class="input-with-prefix">
-          <span>$</span>
+          <span aria-hidden="true">{{ currencyGlyph() }}</span>
           <input
             id="t-amt"
             data-testid="transfer-amount-input"
@@ -80,7 +80,7 @@
             [ngModel]="amount()"
             (ngModelChange)="amountChange.emit($event)"
             inputmode="decimal"
-            placeholder="1,000.00"
+            [placeholder]="amountPlaceholder()"
           />
         </div>
       </div>

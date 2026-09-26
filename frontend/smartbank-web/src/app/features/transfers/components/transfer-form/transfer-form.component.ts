@@ -23,6 +23,8 @@ export class TransferFormComponent {
   amount = input('');
   narrative = input('');
   sourceCurrency = input('EUR');
+  currencyGlyph = input('€');
+  amountPlaceholder = input('1,000.00 €');
   sourceAlias = input('');
   insufficient = input(false);
   submitDisabled = input(true);

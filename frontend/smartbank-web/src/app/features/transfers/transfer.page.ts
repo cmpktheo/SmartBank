@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { LucideCheck } from '@lucide/angular';
 import { formatIban, isValidIban } from '../../core/iban';
+import { getAmountPlaceholder, getCurrencySymbol } from '../../core/currency';
 import { AccountsService } from '../accounts/data-access/accounts.service';
 import {
   TransfersService,
@@ -12,7 +13,7 @@ import type { AccountSummary } from '../../core/models/models';
 import { TransferFormComponent } from './components/transfer-form/transfer-form.component';
 import { TransferConfirmDialogComponent } from './components/transfer-confirm-dialog/transfer-confirm-dialog.component';
 
-const CURRENCY_GLYPH: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
+
 
 @Component({
   selector: 'sb-transfer',
@@ -38,7 +39,9 @@ const CURRENCY_GLYPH: Record<string, string> = { EUR: '€', USD: '$', GBP: '£'
         [holderName]="holderName()"
         [amount]="amount()"
         [narrative]="narrative()"
-        [sourceCurrency]="sourceAccount()?.currency ?? 'EUR'"
+        [sourceCurrency]="sourceCurrency()"
+        [currencyGlyph]="sourceCurrencyGlyph()"
+        [amountPlaceholder]="sourceAmountPlaceholder()"
         [sourceAlias]="sourceAlias()"
         [insufficient]="insufficient()"
         [submitDisabled]="submitDisabled()"
@@ -94,12 +97,15 @@ export class TransferPage implements OnInit {
 
   sourceAccount = computed(() => this.accounts().find((a) => a.id === this.selectedSourceId()));
   sourceAlias = computed(() => this.sourceAccount()?.alias ?? '');
+  sourceCurrency = computed(() => this.sourceAccount()?.currency ?? 'EUR');
+  sourceCurrencyGlyph = computed(() => getCurrencySymbol(this.sourceCurrency()));
+  sourceAmountPlaceholder = computed(() => getAmountPlaceholder(this.sourceCurrency()));
   sourceOptions = computed<ComboOption[]>(() =>
     this.accounts().map((a) => ({
       value: a.id,
       label: `${a.alias} · ${a.availableBalance} ${a.currency}`,
       sub: `${a.type} · …${a.ibanFormatted.slice(-4)} · ${a.status}`,
-      icon: CURRENCY_GLYPH[a.currency] ?? 'wallet',
+      icon: getCurrencySymbol(a.currency) || 'wallet',
     }))
   );
   insufficient = computed(() => {

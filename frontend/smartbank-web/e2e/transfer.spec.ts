@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { DashboardPage, TransferPage, loginAsAlex } from './poms/pages';
-import * as fs from 'fs';
+import { DashboardPage, TransferPage, loginAsAlex, getInternalDestinationIban } from './poms/pages';
 
 function parseBalance(text: string): number {
   const n = text.replace(/[^0-9.,-]/g, '').replace(/,/g, '');
@@ -14,11 +13,11 @@ test.describe.serial('transfers', () => {
     await dashboard.expectLoaded();
     const b0 = parseBalance(await dashboard.balanceText(0));
 
-    const seed = JSON.parse(fs.readFileSync('e2e/fixtures/seed.json', 'utf-8'));
+    const destIban = await getInternalDestinationIban(request, page);
     const transfer = new TransferPage(page);
     await dashboard.quickTransfer().click();
     await expect(page).toHaveURL(/transfers/);
-    await transfer.fillInternal(seed.jordan.iban, '100.00');
+    await transfer.fillInternal(destIban, '100.00');
     await expect(transfer.verified()).toBeVisible();
     await transfer.submitAndConfirm();
     await expect(transfer.success()).toBeVisible();
