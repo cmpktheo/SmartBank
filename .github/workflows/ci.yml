@@ -86,6 +86,7 @@ jobs:
       - run: dotnet test -c Release --logger "trx;LogFileName=test-results.trx"
       - name: Start backend APIs
         run: |
+          dotnet build SmartBank.slnx -c Release --nologo -v minimal
           mkdir -p .logs
           export ASPNETCORE_ENVIRONMENT=Development
           export E2E_OTP_SEAM=true
@@ -98,7 +99,7 @@ jobs:
           for port in 5100 5101 5102 5103 5104 5105; do
             for i in $(seq 1 60); do
               if curl -fsS "http://localhost:$port/health/ready" > /dev/null; then echo "port $port ready"; break; fi
-              if [ "$i" -eq 60 ]; then echo "port $port NOT ready"; exit 1; fi
+              if [ "$i" -eq 60 ]; then echo "port $port NOT ready — log tails:"; tail -n 50 .logs/apis-*.log; exit 1; fi
               sleep 2
             done
           done
