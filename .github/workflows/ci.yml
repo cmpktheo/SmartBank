@@ -81,13 +81,41 @@ jobs:
           npm --version
           docker --version
           ls -la
-      - run: docker compose up -d
+      - name: Start infrastructure
+        run: docker compose up -d --wait --wait-timeout 180
       - run: dotnet test -c Release --logger "trx;LogFileName=test-results.trx"
-      - working-directory: frontend/smartbank-web
-        run: npx playwright install chromium && npx playwright test
-      - name: Dump container logs on failure
+      - name: Start backend APIs
+        run: |
+          mkdir -p .logs
+          export ASPNETCORE_ENVIRONMENT=Development
+          export E2E_OTP_SEAM=true
+          dotnet run --project src/Services/Identity/SmartBank.Identity.Api/SmartBank.Identity.Api.csproj -c Release --no-build --no-launch-profile > .logs/apis-identity.log 2>&1 &
+          dotnet run --project src/Services/Customer/SmartBank.Customer.Api/SmartBank.Customer.Api.csproj -c Release --no-build --no-launch-profile > .logs/apis-customer.log 2>&1 &
+          dotnet run --project src/Services/Ledger/SmartBank.Ledger.Api/SmartBank.Ledger.Api.csproj -c Release --no-build --no-launch-profile > .logs/apis-ledger.log 2>&1 &
+          dotnet run --project src/Services/Cards/SmartBank.Cards.Api/SmartBank.Cards.Api.csproj -c Release --no-build --no-launch-profile > .logs/apis-cards.log 2>&1 &
+          dotnet run --project src/Services/Notification/SmartBank.Notification.Api/SmartBank.Notification.Api.csproj -c Release --no-build --no-launch-profile > .logs/apis-notification.log 2>&1 &
+          dotnet run --project src/Gateways/SmartBank.ApiGateway/SmartBank.ApiGateway.csproj -c Release --no-build --no-launch-profile > .logs/apis-gateway.log 2>&1 &
+          for port in 5100 5101 5102 5103 5104 5105; do
+            for i in $(seq 1 60); do
+              if curl -fsS "http://localhost:$port/health/ready" > /dev/null; then echo "port $port ready"; break; fi
+              if [ "$i" -eq 60 ]; then echo "port $port NOT ready"; exit 1; fi
+              sleep 2
+            done
+          done
+      - name: Install frontend dependencies
+        working-directory: frontend/smartbank-web
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright chromium
+        working-directory: frontend/smartbank-web
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright tests
+        working-directory: frontend/smartbank-web
+        run: npx playwright test
+      - name: Dump backend logs on failure
         if: failure()
-        run: docker compose logs --no-color > docker-compose.log 2>&1 || true
+        run: |
+          docker compose logs --no-color > docker-compose.log 2>&1 || true
+          tail -100 .logs/apis-*.log || true
       - name: Upload e2e logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -95,6 +123,7 @@ jobs:
           name: e2e-logs
           path: |
             docker-compose.log
+            .logs/apis-*.log
             frontend/smartbank-web/test-results/
             frontend/smartbank-web/playwright-report/
             **/TestResults/**
